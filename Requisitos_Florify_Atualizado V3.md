@@ -130,6 +130,68 @@ A Florify é uma plataforma SaaS multi-tenant voltada para a comercialização d
 - Bloqueio de envio duplicado com botão desativado
 - Exibição de loading e mensagens reativas (toast ou modal)
 
+## 9. IMPORTAÇÃO DE ARQUIVOS CSV – PRODUTOS CVH
+
+### 9.1. Objetivo
+Permitir que o `master_plataforma` importe arquivos CSV da Cooperativa Veiling Holambra (CVH) contendo produtos atualizados. A importação deve ser controlada, auditada e validada antes da atualização da base oficial.
+
+### 9.2. Fluxo resumido
+1. Usuário master envia arquivo CSV pelo frontend
+2. Backend/cliente lê e valida os dados (estrutura, campos obrigatórios)
+3. Compara os itens com a base atual:
+   - Identifica produtos **novos**
+   - Identifica produtos **alterados** (exibe alterações)
+   - Ignora produtos **sem alteração**
+4. Exibe um resumo com os itens novos/alterados ao usuário
+5. Usuário confirma a importação final
+6. Os dados são inseridos/atualizados na tabela oficial
+7. Um log da operação é salvo para auditoria futura
+
+### 9.3. Tabela principal: `produtos_cvh`
+| Campo              | Tipo      | Descrição                                          |
+|--------------------|-----------|---------------------------------------------------|
+| itemcode           | TEXT      | Código único do produto (chave mestre)           |
+| descricao          | TEXT      | Descrição do produto                             |
+| categoria          | TEXT      | Categoria (ex: flor, planta, etc.)               |
+| cor                | TEXT      | Cor predominante                                 |
+| detalhes           | TEXT      | Observações/detalhes adicionais                  |
+| preco_unitario     | NUMERIC   | Preço de referência                              |
+| unidade_medida     | TEXT      | Tipo de unidade (vaso, cx, etc.)                 |
+| embalagem          | TEXT      | Tipo de embalagem                                |
+| cvh_data_atual     | DATE      | Data da última atualização desse item na CVH     |
+| lastupdatedate     | TIMESTAMP | Data da última atualização deste registro na base|
+
+> **itemcode** é o campo de controle principal. Diferentes descrições podem existir, mas se o código for o mesmo, ele é considerado o mesmo produto.
+
+### 9.4. Tabela auxiliar: `importacoes_cvh`
+| Campo             | Tipo      | Descrição                                     |
+|-------------------|-----------|-----------------------------------------------|
+| id                | UUID      | Identificador da importação                   |
+| nome_arquivo      | TEXT      | Nome do arquivo CSV enviado                   |
+| total_linhas      | INTEGER   | Quantidade total de registros no arquivo      |
+| novos             | INTEGER   | Quantidade de itens novos                     |
+| alterados         | INTEGER   | Quantidade de itens alterados                 |
+| usuario_id        | UUID      | Quem executou a importação                    |
+| data_importacao   | TIMESTAMP | Quando ocorreu                                |
+| status            | TEXT      | concluído / pendente / erro                   |
+| diff_preview      | JSON      | Pré-visualização de diferenças detectadas     |
+
+### 9.5. Validações obrigatórias
+- Todos os campos obrigatórios devem estar presentes
+- itemcode duplicado no mesmo arquivo é rejeitado
+- Arquivo CSV inválido (estrutura, separador, codificação) deve ser tratado com mensagem clara
+- Produtos com alteração devem mostrar visualmente o “antes e depois” por campo
+
+### 9.6. Tratamento de conflitos
+- O sistema **não atualiza automaticamente** os dados
+- Alterações só são salvas **após confirmação visual do master**
+- Histórico completo fica salvo na tabela de importações
+
+### 9.7. Histórico e rastreabilidade
+- Toda importação cria um novo log em `importacoes_cvh`
+- Arquivo CSV pode ser salvo em Supabase Storage para rastreabilidade
+- Cada produto pode ser relacionado com a última importação que o afetou
+
 ---
 
 **Este documento consolida o escopo técnico e funcional do MVP da plataforma Florify, permitindo o início imediato do desenvolvimento frontend e integração com Supabase.**
