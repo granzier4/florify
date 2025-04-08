@@ -1,19 +1,87 @@
 import { supabase } from './supabase';
 
 /**
+ * Tipos para o serviço de logs
+ */
+interface BaseLogParams {
+  importacao_id: string;
+  usuario_id?: string;
+  nome_arquivo: string;
+}
+
+interface SucessoImportacaoParams extends BaseLogParams {
+  novos: number;
+  alterados: number;
+}
+
+interface ErroImportacaoParams {
+  importacao_id: string;
+  usuario_id?: string;
+  mensagem: string;
+  erro: any;
+  metadata?: Record<string, any>;
+}
+
+interface AlteracaoProdutoParams extends BaseLogParams {
+  codbarra: string; // Chave principal para identificação do produto
+  item_code: string;
+  dados_anteriores: Record<string, any>;
+  dados_novos: Record<string, any>;
+  campos_alterados: string[];
+}
+
+interface NovoProdutoParams extends BaseLogParams {
+  produto: {
+    codbarra: string;
+    item_code?: string;
+    [key: string]: any;
+  };
+}
+
+interface ErroOperacaoParams extends BaseLogParams {
+  codbarra?: string; // Chave principal para identificação do produto
+  item_code?: string;
+  tipo_operacao: string;
+  mensagem_erro: string;
+  erro: any;
+  metadata?: Record<string, any>;
+}
+
+interface LogRecord {
+  importacao_id: string;
+  usuario_id?: string;
+  item_code?: string;
+  codbarra?: string;
+  tipo_operacao: string;
+  status: 'sucesso' | 'erro';
+  mensagem_erro?: string;
+  dados_anteriores?: Record<string, any>;
+  dados_novos?: Record<string, any>;
+  metadata?: Record<string, any>;
+  data_alteracao?: string;
+}
+
+/**
  * Serviço para gerenciamento de logs de importação de produtos
  */
 export const logService = {
   /**
+   * Cria um objeto de metadados base para os logs
+   */
+  criarMetadataBase: (nome_arquivo: string, extra?: Record<string, any>): Record<string, any> => {
+    return {
+      arquivo: nome_arquivo,
+      timestamp: new Date().toISOString(),
+      ambiente: process.env.NODE_ENV || 'development',
+      versao: process.env.VERSION || '1.0.0',
+      ...extra
+    };
+  },
+
+  /**
    * Registra um log de sucesso na importação
    */
-  registrarSucessoImportacao: async (params: {
-    importacao_id: string;
-    usuario_id?: string;
-    nome_arquivo: string;
-    novos: number;
-    alterados: number;
-  }): Promise<void> => {
+  registrarSucessoImportacao: async (params: SucessoImportacaoParams): Promise<void> => {
     try {
       const { importacao_id, usuario_id, nome_arquivo, novos, alterados } = params;
       
@@ -24,13 +92,11 @@ export const logService = {
           usuario_id,
           tipo_operacao: 'importacao',
           status: 'sucesso',
-          metadata: {
-            arquivo: nome_arquivo,
-            timestamp: new Date().toISOString(),
+          metadata: logService.criarMetadataBase(nome_arquivo, {
             novos,
             alterados,
             total: novos + alterados
-          }
+          })
         });
       
       console.log('[Log]: Sucesso de importação registrado');
@@ -43,13 +109,7 @@ export const logService = {
   /**
    * Registra um log de erro na importação
    */
-  registrarErroImportacao: async (params: {
-    importacao_id: string;
-    usuario_id?: string;
-    mensagem: string;
-    erro: any;
-    metadata?: Record<string, any>;
-  }): Promise<void> => {
+  registrarErroImportacao: async (params: ErroImportacaoParams): Promise<void> => {
     try {
       const { importacao_id, usuario_id, mensagem, erro, metadata = {} } = params;
       
@@ -80,16 +140,7 @@ export const logService = {
    * Registra um log de alteração de produto
    * Usa codbarra como chave principal para identificação
    */
-  registrarAlteracaoProduto: async (params: {
-    importacao_id: string;
-    usuario_id?: string;
-    nome_arquivo: string;
-    item_code: string; // Mantido para compatibilidade, mas não é usado para identificação
-    codbarra: string; // Chave principal para identificação do produto
-    dados_anteriores: any;
-    dados_novos: any;
-    campos_alterados: string[];
-  }): Promise<void> => {
+  registrarAlteracaoProduto: async (params: AlteracaoProdutoParams): Promise<void> => {
     try {
       const { 
         importacao_id, 
@@ -113,12 +164,10 @@ export const logService = {
           codbarra,
           tipo_operacao: 'alteracao',
           status: 'sucesso',
-          metadata: {
-            arquivo: nome_arquivo,
-            timestamp: new Date().toISOString(),
+          metadata: logService.criarMetadataBase(nome_arquivo, {
             campos_alterados,
             operacao: 'atualizacao_produto'
-          }
+          })
         });
     } catch (error: any) {
       console.error(`[Log]: Falha ao registrar alteração do produto ${params.codbarra}`, error);
@@ -130,14 +179,14 @@ export const logService = {
    * Registra um log de novo produto
    * Usa codbarra como chave principal para identificação
    */
-  registrarNovoProduto: async (params: {
-    importacao_id: string;
-    usuario_id?: string;
-    nome_arquivo: string;
-    produto: any; // Deve conter o campo codbarra para identificação
-  }): Promise<void> => {
+  registrarNovoProduto: async (params: NovoProdutoParams): Promise<void> => {
     try {
       const { importacao_id, usuario_id, nome_arquivo, produto } = params;
+      
+      if (!produto.codbarra) {
+        console.error('[Log]: Tentativa de registrar novo produto sem codbarra');
+        return;
+      }
       
       await supabase
         .from('historico_produtos_cvh')
@@ -149,11 +198,9 @@ export const logService = {
           codbarra: produto.codbarra,
           tipo_operacao: 'insercao',
           status: 'sucesso',
-          metadata: {
-            arquivo: nome_arquivo,
-            timestamp: new Date().toISOString(),
+          metadata: logService.criarMetadataBase(nome_arquivo, {
             operacao: 'novo_produto'
-          }
+          })
         });
     } catch (error: any) {
       console.error(`[Log]: Falha ao registrar novo produto ${params.produto.codbarra}`, error);
@@ -165,34 +212,19 @@ export const logService = {
    * Registra um erro específico em uma operação
    * Usa codbarra como chave principal para identificação quando disponível
    */
-  registrarErroOperacao: async (params: {
-    importacao_id: string;
-    usuario_id?: string;
-    nome_arquivo: string;
-    item_code?: string; // Mantido para compatibilidade, mas não é usado para identificação
-    itemcode?: string; // Campo antigo, será mapeado para item_code
-    codbarra?: string; // Chave principal para identificação do produto
-    tipo_operacao: string;
-    mensagem_erro: string;
-    erro: any;
-    metadata?: Record<string, any>;
-  }): Promise<void> => {
+  registrarErroOperacao: async (params: ErroOperacaoParams): Promise<void> => {
     try {
       const { 
         importacao_id, 
         usuario_id, 
         nome_arquivo, 
-        item_code: paramItemCode, 
-        itemcode: paramItemcode, 
-        codbarra, 
+        item_code = '', 
+        codbarra = '', 
         tipo_operacao, 
         mensagem_erro, 
         erro, 
         metadata 
       } = params;
-      
-      // Usar item_code do parâmetro ou mapear de itemcode se disponível
-      const item_code = paramItemCode || paramItemcode || '';
       
       await supabase
         .from('historico_produtos_cvh')
@@ -200,17 +232,15 @@ export const logService = {
           importacao_id,
           usuario_id,
           item_code,
-          codbarra: codbarra || '',
+          codbarra,
           tipo_operacao,
           status: 'erro',
           mensagem_erro,
-          metadata: {
-            arquivo: nome_arquivo,
-            timestamp: new Date().toISOString(),
+          metadata: logService.criarMetadataBase(nome_arquivo, {
             erro_tecnico: erro.message || 'Erro desconhecido',
             codigo_erro: erro.code,
             ...metadata
-          }
+          })
         });
     } catch (error: any) {
       console.error(`[Log]: Falha ao registrar erro de operação`, error);
@@ -221,27 +251,16 @@ export const logService = {
   /**
    * Registra logs em lote (para melhor performance)
    */
-  registrarLogsEmLote: async (logs: any[]): Promise<void> => {
+  registrarLogsEmLote: async (logs: Partial<LogRecord>[]): Promise<void> => {
     try {
       // Garantir que os campos estejam no formato correto antes de inserir
       const logsFormatados = logs.map(log => {
-        // Remover o campo itemcode se existir e mapear para item_code (nome correto no banco)
-        if (log.itemcode !== undefined) {
-          // Mapear itemcode para item_code se item_code não estiver definido
-          if (!log.item_code) {
-            log.item_code = log.itemcode;
-          }
-          // Remover o campo itemcode para evitar erro no banco
-          delete log.itemcode;
-        }
-        
         // Garantir que codbarra seja a chave principal para identificação
-        if (!log.codbarra && log.item_code) {
-          console.warn('[Log]: Registro sem codbarra definido. Usando item_code como fallback, mas isto não é recomendado.');
+        if (!log.codbarra) {
+          console.warn('[Log]: Registro sem codbarra definido. Isto não é recomendado.');
         }
         
         // Garantir que todos os campos obrigatórios existam
-        // Usar codbarra como chave principal para identificação do produto
         return {
           ...log,
           item_code: log.item_code || '',

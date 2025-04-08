@@ -230,7 +230,7 @@ export const produtosCvhService = {
               console.log(`Total de produtos existentes no banco: ${produtosExistentes?.length || 0}`);
               console.log(`Produtos mapeados por código de barras: ${mapaProdutosPorCodigoBarras.size}`);
               
-              // Criar um mapa para os produtos do CSV por item_code para verificar duplicidades
+              // Criar um mapa para os produtos do CSV para verificar duplicidades
               const produtosCsvMap = new Map<string, any>();
               data.forEach((row: any) => {
                 if (row.ITEM_CODE) {
@@ -492,7 +492,7 @@ export const produtosCvhService = {
             importacao_id,
             usuario_id,
             nome_arquivo: importacao.nome_arquivo,
-            item_code: '',  // Campo item_code vazio, usamos codbarra como chave principal
+            item_code: '',
             codbarra: '',   // Erro geral, não associado a um produto específico
             tipo_operacao: 'insercao',
             mensagem_erro: mensagemErro,
@@ -510,7 +510,7 @@ export const produtosCvhService = {
           importacao_id,
           usuario_id,
           dados_novos: produto,
-          item_code: produto.item_code || '',  // Usar item_code como nome do campo correto no banco
+          item_code: produto.item_code || '',
           codbarra: produto.codbarra,          // Usar codbarra como chave principal para identificação
           tipo_operacao: 'insercao',
           status: 'sucesso',
@@ -636,24 +636,43 @@ export const produtosCvhService = {
       const mensagemErro = `[Importação]: Falha ao confirmar importação - ${error.message || 'Erro desconhecido'}`;
       console.error(mensagemErro, error);
       
-      // Obter usuário atual
+      // Buscar informações da importação e usuário
       const { data: { user } } = await supabase.auth.getUser();
       const usuario_id = user?.id;
       
-      // Buscar informações da importação, se possível
       let nome_arquivo = '';
       try {
         const { data: importacao } = await supabase
           .from('importacoes_cvh')
-          .select('nome_arquivo')
+          .select('nome_arquivo, diff_preview')
           .eq('id', importacao_id)
           .single();
           
         if (importacao) {
           nome_arquivo = importacao.nome_arquivo;
+          
+          // Atualizar status da importação para erro
+          await supabase
+            .from('importacoes_cvh')
+            .update({ 
+              status: 'erro',
+              diff_preview: {
+                ...(importacao.diff_preview || {}),
+                erro: error.message || 'Erro desconhecido',
+                timestamp: new Date().toISOString(),
+                resumo_final: {
+                  novos_processados: novos?.length || 0,
+                  alterados_processados: alterados?.length || 0,
+                  timestamp: new Date().toISOString(),
+                  usuario: usuario_id,
+                  chave_identificacao: 'codbarra'
+                }
+              }
+            })
+            .eq('id', importacao_id);
         }
       } catch (e) {
-        // Ignorar erro ao buscar nome do arquivo
+        console.error('[DB]: Falha ao buscar informações da importação', e);
       }
       
       // Registrar erro geral da importação
@@ -663,40 +682,11 @@ export const produtosCvhService = {
         mensagem: mensagemErro,
         erro: error,
         metadata: {
-          arquivo: nome_arquivo
+          arquivo: nome_arquivo,
+          novos_processados: novos?.length || 0,
+          alterados_processados: alterados?.length || 0
         }
       });
-      
-      // Atualizar status da importação para erro
-      try {
-        // Buscar diff_preview atual
-        const { data: importacaoAtual } = await supabase
-          .from('importacoes_cvh')
-          .select('diff_preview')
-          .eq('id', importacao_id)
-          .single();
-          
-        await supabase
-          .from('importacoes_cvh')
-          .update({ 
-            status: 'erro',
-            diff_preview: {
-              ...(importacaoAtual?.diff_preview || {}),
-              erro: error.message || 'Erro desconhecido',
-              timestamp: new Date().toISOString(),
-              resumo_final: {
-                novos_processados: novos.length,
-                alterados_processados: alterados.length,
-                timestamp: new Date().toISOString(),
-                usuario: usuario_id,
-                chave_identificacao: 'codbarra' // Indicando explicitamente que codbarra é a chave de identificação
-              }
-            }
-          })
-          .eq('id', importacao_id);
-      } catch (updateError) {
-        console.error('[DB]: Falha ao atualizar status da importação para erro', updateError);
-      }
       
       throw new Error(mensagemErro);
     }

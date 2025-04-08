@@ -194,7 +194,7 @@ const ImportarProdutosCvh = () => {
           alterados: analiseResult.alterados
             .filter(item => produtosSelecionados.alterados.includes(item.atual.item_code))
             .map(item => ({
-              item_cod: item.atual.item_code,
+              item_code: item.atual.item_code,
               codbarra: item.atual.codbarra,
               diferencas: item.diferencas
             })),
@@ -373,7 +373,7 @@ const ImportarProdutosCvh = () => {
             </Typography>
             
             <Typography variant="body2" color="text.secondary" paragraph>
-              O arquivo deve estar no formato CSV com os seguintes campos: itemcode, descricao, categoria, cor, detalhes, preco_unitario, unidade_medida, embalagem, cvh_data_atual
+              O arquivo deve estar no formato CSV com os seguintes campos: ITEM_CODE, DESCRICAO, CATEGORIA, COR, DETALHES, PRECO_UNITARIO, UNIDADE_MEDIDA, EMBALAGEM, CVH_DATA_ATUAL, CODBARRA
             </Typography>
             
             <Box sx={{ mt: 2, mb: 3 }}>
