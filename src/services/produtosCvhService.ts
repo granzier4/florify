@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { logService } from './logService';
 import Papa from 'papaparse';
 
 // Interfaces
@@ -130,23 +131,23 @@ export const produtosCvhService = {
   },
   
   // Buscar produto por código
+  // NOTA: Esta função é mantida para compatibilidade, mas recomendamos usar buscarProdutoPorCodigoBarras
+  // já que codbarra é a chave principal para identificação
   buscarProdutoPorCodigo: async (item_code: string): Promise<ProdutoCvh | null> => {
     try {
       // Usar o método de filtro para evitar problemas com caracteres especiais na URL
       const { data, error } = await supabase
         .from('produtos_cvh')
         .select('*')
-        .filter('item_code', 'eq', item_code);
+        .filter('item_code', 'eq', item_code)
+        .limit(1);
       
-      if (error) {
-        console.error('Erro ao buscar produto:', error);
-        throw error;
-      }
+      if (error) throw error;
       
       return data && data.length > 0 ? data[0] as ProdutoCvh : null;
-    } catch (error) {
-      console.error(`Erro ao buscar produto ${item_code}:`, error);
-      return null;
+    } catch (error: any) {
+      console.error(`Erro ao buscar produto por código ${item_code}:`, error);
+      throw new Error(`Falha ao buscar produto por código: ${error.message || 'Erro desconhecido'}`);
     }
   },
   
@@ -157,17 +158,15 @@ export const produtosCvhService = {
       const { data, error } = await supabase
         .from('produtos_cvh')
         .select('*')
-        .filter('codbarra', 'eq', codbarra);
+        .filter('codbarra', 'eq', codbarra)
+        .limit(1);
       
-      if (error) {
-        console.error('Erro ao buscar produto por código de barras:', error);
-        throw error;
-      }
+      if (error) throw error;
       
       return data && data.length > 0 ? data[0] as ProdutoCvh : null;
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Erro ao buscar produto com código de barras ${codbarra}:`, error);
-      return null;
+      throw new Error(`Falha ao buscar produto por código de barras: ${error.message || 'Erro desconhecido'}`);
     }
   },
   
@@ -218,8 +217,6 @@ export const produtosCvhService = {
               
               // Criar um mapa de produtos por código de barras para facilitar a busca
               const mapaProdutosPorCodigoBarras = new Map<string, ProdutoCvh>();
-              // Criar um mapa de produtos por item_code para facilitar a busca
-              const mapaProdutosPorItemCode = new Map<string, ProdutoCvh>();
               
               if (produtosExistentes && produtosExistentes.length > 0) {
                 produtosExistentes.forEach((produto: any) => {
@@ -227,16 +224,11 @@ export const produtosCvhService = {
                   if (produto.codbarra) {
                     mapaProdutosPorCodigoBarras.set(produto.codbarra, produto as ProdutoCvh);
                   }
-                  // Mapear por item_code também
-                  if (produto.item_code) {
-                    mapaProdutosPorItemCode.set(produto.item_code, produto as ProdutoCvh);
-                  }
                 });
               }
               
               console.log(`Total de produtos existentes no banco: ${produtosExistentes?.length || 0}`);
               console.log(`Produtos mapeados por código de barras: ${mapaProdutosPorCodigoBarras.size}`);
-              console.log(`Produtos mapeados por item_code: ${mapaProdutosPorItemCode.size}`);
               
               // Criar um mapa para os produtos do CSV por item_code para verificar duplicidades
               const produtosCsvMap = new Map<string, any>();
@@ -287,21 +279,32 @@ export const produtosCvhService = {
                   continue;
                 }
                 
-                // Verificar se o produto já existe pelo código de barras
-                const produtoExistentePorCodigoBarras = mapaProdutosPorCodigoBarras.get(produtoCsv.codbarra);
-                // Verificar se o produto já existe pelo item_code
-                const produtoExistentePorItemCode = mapaProdutosPorItemCode.get(produtoCsv.item_code);
+                // Verificar se o produto já existe pelo código de barras (chave principal)
+                console.log(`Verificando produto com codbarra: ${produtoCsv.codbarra}`, typeof produtoCsv.codbarra);
                 
-                // Determinar qual produto existente usar para comparação
-                let produtoExistente = null;
+                // Verificar se o código de barras está no formato correto (pode haver espaços ou outros caracteres)
+                // Garantir que codbarra seja uma string antes de chamar trim()
+                const codbarraLimpo = typeof produtoCsv.codbarra === 'string' 
+                  ? produtoCsv.codbarra.trim() 
+                  : produtoCsv.codbarra ? String(produtoCsv.codbarra) : '';
                 
-                // Prioridade 1: Usar o produto com o mesmo código de barras
-                if (produtoExistentePorCodigoBarras) {
-                  produtoExistente = produtoExistentePorCodigoBarras;
-                } 
-                // Prioridade 2: Usar o produto com o mesmo item_code
-                else if (produtoExistentePorItemCode) {
-                  produtoExistente = produtoExistentePorItemCode;
+                if (!codbarraLimpo) {
+                  console.warn(`Linha ${i+2}: Código de barras vazio ou inválido`);
+                  resultado.erros.push({
+                    linha: i + 2,
+                    erro: 'Código de barras vazio ou inválido. Este campo é obrigatório para identificação do produto.'
+                  });
+                  continue;
+                }
+                
+                // Verificar se o produto existe com o código de barras exato ou limpo
+                const produtoExistente = mapaProdutosPorCodigoBarras.get(codbarraLimpo);
+                
+                if (!produtoExistente) {
+                  console.log(`Produto com codbarra ${codbarraLimpo} não encontrado no banco. Códigos disponíveis:`, 
+                    Array.from(mapaProdutosPorCodigoBarras.keys()).slice(0, 10));
+                } else {
+                  console.log(`Produto com codbarra ${codbarraLimpo} encontrado no banco.`);
                 }
                 
                 if (produtoExistente) {
@@ -446,19 +449,32 @@ export const produtosCvhService = {
       
       if (error) throw error;
     } catch (error: any) {
-      console.error('Erro ao atualizar status da importação:', error);
-      throw new Error('Falha ao atualizar status: ' + (error.message || 'Erro desconhecido'));
+      console.error('[DB]: Erro ao atualizar status da importação:', error);
+      throw new Error(`Falha ao atualizar status da importação: ${error.message || 'Erro desconhecido'}`);
     }
   },
   
   // Confirmar importação
   confirmarImportacao: async (importacao_id: string, novos: ProdutoCvh[], alterados: ProdutoAlterado[]): Promise<void> => {
     try {
-      console.log(`Iniciando importação: ${novos.length} novos, ${alterados.length} alterados`);
+      // Buscar informações da importação
+      const { data: importacao, error: errorImportacao } = await supabase
+        .from('importacoes_cvh')
+        .select('*')
+        .eq('id', importacao_id)
+        .single();
+      
+      if (errorImportacao) {
+        throw new Error(`Falha ao buscar informações da importação: ${errorImportacao.message}`);
+      }
+      
+      // Obter usuário atual
+      const { data: { user } } = await supabase.auth.getUser();
+      const usuario_id = user?.id || importacao.usuario_id;
       
       // 1. Inserir novos produtos
+      console.log('[Importação]: Inserindo novos produtos...');
       if (novos.length > 0) {
-        console.log('Inserindo novos produtos...');
         const { error } = await supabase
           .from('produtos_cvh')
           .insert(novos.map(produto => ({
@@ -468,116 +484,221 @@ export const produtosCvhService = {
           })));
         
         if (error) {
-          console.error('Erro ao inserir novos produtos:', error);
-          throw error;
+          const mensagemErro = `[DB]: Falha na inserção - ${error.message}`;
+          console.error(mensagemErro, error);
+          
+          // Registrar erro no histórico
+          await logService.registrarErroOperacao({
+            importacao_id,
+            usuario_id,
+            nome_arquivo: importacao.nome_arquivo,
+            item_code: '',  // Campo item_code vazio, usamos codbarra como chave principal
+            codbarra: '',   // Erro geral, não associado a um produto específico
+            tipo_operacao: 'insercao',
+            mensagem_erro: mensagemErro,
+            erro: error,
+            metadata: {
+              quantidade: novos.length
+            }
+          });
+          
+          throw new Error(mensagemErro);
         }
-        console.log('Novos produtos inseridos com sucesso');
+        
+        // Preparar logs para novos produtos
+        const logsNovos = novos.map(produto => ({
+          importacao_id,
+          usuario_id,
+          dados_novos: produto,
+          item_code: produto.item_code || '',  // Usar item_code como nome do campo correto no banco
+          codbarra: produto.codbarra,          // Usar codbarra como chave principal para identificação
+          tipo_operacao: 'insercao',
+          status: 'sucesso',
+          metadata: {
+            arquivo: importacao.nome_arquivo,
+            timestamp: new Date().toISOString(),
+            operacao: 'novo_produto'
+          }
+        }));
+        
+        // Registrar logs em lote
+        await logService.registrarLogsEmLote(logsNovos);
+        
+        console.log(`[Importação]: ${novos.length} novos produtos inseridos com sucesso`);
       }
       
       // 2. Atualizar produtos alterados
+      console.log('[Importação]: Atualizando produtos alterados...');
       if (alterados.length > 0) {
-        console.log('Atualizando produtos alterados...');
-        for (const item of alterados) {
-          // Importante: nunca atualizar o código de barras
-          const dadosAtualizados = { ...item.novo };
+      for (const item of alterados) {
+        // Remover campos que não devem ser atualizados
+        const { id, ...dadosAtualizados } = item.novo;
+        
+        // Registrar histórico de alteração com mais detalhes
+        try {
+          await logService.registrarAlteracaoProduto({
+            importacao_id,
+            usuario_id,
+            nome_arquivo: importacao.nome_arquivo,
+            item_code: item.atual.item_code || '',
+            codbarra: item.atual.codbarra,  // Usar codbarra como chave principal
+            dados_anteriores: item.atual,
+            dados_novos: item.novo,
+            campos_alterados: Object.keys(item.diferencas)
+          });
+        } catch (errorHistorico: any) {
+          const mensagemErro = `[DB]: Erro ao registrar histórico - ${errorHistorico.message || 'Erro desconhecido'}`;
+          console.error(mensagemErro, { produto: item.atual.codbarra, erro: errorHistorico });
           
-          // Manter o código de barras original
-          dadosAtualizados.codbarra = item.atual.codbarra;
-          
-          console.log(`Atualizando produto com código de barras: ${item.atual.codbarra}`);
-          
-          // Primeiro, vamos registrar o histórico (para evitar problemas com a atualização)
-          try {
-            // Extrair os valores anteriores e novos das diferenças
-            const dadosAnteriores: Record<string, any> = {};
-            const dadosNovos: Record<string, any> = {};
-            
-            Object.entries(item.diferencas).forEach(([campo, { de, para }]) => {
-              dadosAnteriores[campo] = de;
-              dadosNovos[campo] = para;
-            });
-            
-            // Construir o objeto de inserção com apenas os campos que sabemos que existem
-            const historicoObj: Record<string, any> = {
-              importacao_id,
-              dados_anteriores: dadosAnteriores,
-              dados_novos: dadosNovos,
-              data_alteracao: new Date().toISOString()
-            };
-            
-            // Adicionar item_cod apenas se o produto tiver este campo
-            if (item.atual.item_code) {
-              historicoObj.item_cod = item.atual.item_code;
-            }
-            
-            // Adicionar codbarra apenas se o produto tiver este campo
-            if (item.atual.codbarra) {
-              historicoObj.codbarra = item.atual.codbarra;
-            }
-            
-            // Inserir o registro de histórico diretamente
-            const { error: errorHistorico } = await supabase
-              .from('historico_produtos_cvh')
-              .insert(historicoObj);
-            
-            if (errorHistorico) {
-              console.error(`Erro ao registrar histórico para código de barras ${item.atual.codbarra}:`, errorHistorico);
-              // Não lançar erro para não interromper o fluxo principal
-            } else {
-              console.log(`Histórico registrado com sucesso para código de barras ${item.atual.codbarra}`);
-            }
-          } catch (errorHistorico) {
-            console.error(`Erro ao registrar histórico para código de barras ${item.atual.codbarra}:`, errorHistorico);
-            // Não lançar erro para não interromper o fluxo principal
-          }
-          
-          // Agora, atualizar o produto
-          const { error } = await supabase
-            .from('produtos_cvh')
-            .update({
-              ...dadosAtualizados,
-              importacao_id,
-              lastupdatedate: new Date().toISOString()
-            })
-            .eq('codbarra', item.atual.codbarra);
-          
-          if (error) {
-            console.error(`Erro ao atualizar produto com código de barras ${item.atual.codbarra}:`, error);
-            throw error;
-          }
+          // Não lançar erro para não interromper o fluxo principal
         }
-        console.log('Produtos alterados atualizados com sucesso');
+        
+        // Atualizar o produto usando codbarra como chave principal (única forma de identificação)
+        const { error } = await supabase
+          .from('produtos_cvh')
+          .update({
+            ...dadosAtualizados,
+            importacao_id,
+            lastupdatedate: new Date().toISOString()
+          })
+          .eq('codbarra', item.atual.codbarra);
+        
+        if (error) {
+          const mensagemErro = `[DB]: Falha na atualização - ${error.message}`;
+          console.error(mensagemErro, { produto: item.atual.codbarra, erro: error });
+          
+          // Registrar erro de atualização
+          await logService.registrarErroOperacao({
+            importacao_id,
+            usuario_id,
+            nome_arquivo: importacao.nome_arquivo,
+            item_code: item.atual.item_code || '',
+            codbarra: item.atual.codbarra,  // Usar codbarra como chave principal
+            tipo_operacao: 'atualizacao',
+            mensagem_erro: mensagemErro,
+            erro: error
+          });
+          
+          throw new Error(mensagemErro);
+        }
+      }
+      console.log(`[Importação]: ${alterados.length} produtos alterados atualizados com sucesso`);
       }
       
       // 3. Atualizar status da importação
-      console.log('Atualizando status da importação...');
-      const { error } = await supabase
-        .from('importacoes_cvh')
-        .update({ status: 'concluido' })
-        .eq('id', importacao_id);
-      
-      if (error) {
-        console.error('Erro ao atualizar status da importação:', error);
-        throw error;
-      }
-      
-      console.log('Importação concluída com sucesso');
-    } catch (error: any) {
-      console.error('Erro ao confirmar importação:', error);
-      
-      // Atualizar status da importação para erro
-      await supabase
+      console.log('[Importação]: Atualizando status da importação...');
+      const { error: errorStatus } = await supabase
         .from('importacoes_cvh')
         .update({ 
-          status: 'erro',
+          status: 'concluido',
           diff_preview: {
-            ...await produtosCvhService.buscarImportacao(importacao_id).then(imp => imp?.diff_preview || {}),
-            erro: error.message
+            ...(importacao.diff_preview || {}),
+            resumo_final: {
+              novos_processados: novos.length,
+              alterados_processados: alterados.length,
+              timestamp: new Date().toISOString(),
+              usuario: usuario_id,
+              operacao: 'importacao_concluida',
+              chave_identificacao: 'codbarra' // Indicando explicitamente que codbarra é a chave de identificação
+            }
           }
         })
         .eq('id', importacao_id);
       
-      throw new Error(`Falha ao confirmar importação: ${error.message}`);
+      if (errorStatus) {
+        const mensagemErro = `[DB]: Falha ao atualizar status da importação - ${errorStatus.message}`;
+        console.error(mensagemErro, errorStatus);
+        
+        // Registrar erro de atualização de status
+        await logService.registrarErroOperacao({
+          importacao_id,
+          usuario_id,
+          nome_arquivo: importacao.nome_arquivo,
+          tipo_operacao: 'atualizacao_status',
+          mensagem_erro: mensagemErro,
+          erro: errorStatus
+        });
+        
+        throw new Error(mensagemErro);
+      }
+      
+      // Registrar conclusão da importação
+      await logService.registrarSucessoImportacao({
+        importacao_id,
+        usuario_id,
+        nome_arquivo: importacao.nome_arquivo,
+        novos: novos.length,
+        alterados: alterados.length
+      });
+      
+      console.log('[Importação]: Importação concluída com sucesso');
+    } catch (error: any) {
+      const mensagemErro = `[Importação]: Falha ao confirmar importação - ${error.message || 'Erro desconhecido'}`;
+      console.error(mensagemErro, error);
+      
+      // Obter usuário atual
+      const { data: { user } } = await supabase.auth.getUser();
+      const usuario_id = user?.id;
+      
+      // Buscar informações da importação, se possível
+      let nome_arquivo = '';
+      try {
+        const { data: importacao } = await supabase
+          .from('importacoes_cvh')
+          .select('nome_arquivo')
+          .eq('id', importacao_id)
+          .single();
+          
+        if (importacao) {
+          nome_arquivo = importacao.nome_arquivo;
+        }
+      } catch (e) {
+        // Ignorar erro ao buscar nome do arquivo
+      }
+      
+      // Registrar erro geral da importação
+      await logService.registrarErroImportacao({
+        importacao_id,
+        usuario_id,
+        mensagem: mensagemErro,
+        erro: error,
+        metadata: {
+          arquivo: nome_arquivo
+        }
+      });
+      
+      // Atualizar status da importação para erro
+      try {
+        // Buscar diff_preview atual
+        const { data: importacaoAtual } = await supabase
+          .from('importacoes_cvh')
+          .select('diff_preview')
+          .eq('id', importacao_id)
+          .single();
+          
+        await supabase
+          .from('importacoes_cvh')
+          .update({ 
+            status: 'erro',
+            diff_preview: {
+              ...(importacaoAtual?.diff_preview || {}),
+              erro: error.message || 'Erro desconhecido',
+              timestamp: new Date().toISOString(),
+              resumo_final: {
+                novos_processados: novos.length,
+                alterados_processados: alterados.length,
+                timestamp: new Date().toISOString(),
+                usuario: usuario_id,
+                chave_identificacao: 'codbarra' // Indicando explicitamente que codbarra é a chave de identificação
+              }
+            }
+          })
+          .eq('id', importacao_id);
+      } catch (updateError) {
+        console.error('[DB]: Falha ao atualizar status da importação para erro', updateError);
+      }
+      
+      throw new Error(mensagemErro);
     }
   },
   
@@ -622,8 +743,8 @@ export const produtosCvhService = {
     }
   },
   
-  // Buscar histórico de alterações de um produto
-  buscarHistoricoProduto: async (item_code: string): Promise<any[]> => {
+  // Buscar histórico de alterações de um produto por código de barras (chave principal para identificação)
+  buscarHistoricoProduto: async (codbarra: string): Promise<any[]> => {
     try {
       const { data, error } = await supabase
         .from('historico_produtos_cvh')
@@ -636,15 +757,15 @@ export const produtosCvhService = {
             usuario_id(nome)
           )
         `)
-        .filter('item_code', 'eq', item_code)
+        .filter('codbarra', 'eq', codbarra)
         .order('data_alteracao', { ascending: false });
       
       if (error) throw error;
       
       return data || [];
     } catch (error: any) {
-      console.error('Erro ao buscar histórico:', error);
-      throw new Error('Falha ao buscar histórico: ' + (error.message || 'Erro desconhecido'));
+      console.error(`[DB]: Erro ao buscar histórico para produto ${codbarra}`, error);
+      throw new Error(`[DB]: Falha ao buscar histórico - ${error.message || 'Erro desconhecido'}`);
     }
   }
 };
