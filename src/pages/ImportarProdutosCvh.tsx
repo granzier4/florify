@@ -160,11 +160,32 @@ const ImportarProdutosCvh = () => {
     
     try {
       const resultado = await produtosCvhService.analisarArquivoCsv(file);
-      setAnaliseResult(resultado);
-      handleNext();
+      
+      // Verificar se há erros na análise
+      if (resultado.erros && resultado.erros.length > 0) {
+        // Mostrar alerta com os erros encontrados
+        const mensagemErros = `Foram encontrados ${resultado.erros.length} erros na análise do arquivo. Verifique o console para mais detalhes.`;
+        console.error('Erros na análise do arquivo:', resultado.erros);
+        setAnaliseError(mensagemErros);
+        
+        // Ainda assim, definir o resultado para que o usuário possa ver os dados válidos
+        setAnaliseResult(resultado);
+      } else {
+        // Se não houver erros, limpar qualquer erro anterior e avançar
+        setAnaliseError(null);
+        setAnaliseResult(resultado);
+        handleNext();
+      }
     } catch (error: any) {
       console.error('Erro ao analisar arquivo:', error);
       setAnaliseError(error.message || 'Erro ao analisar arquivo');
+      
+      // Mostrar snackbar com o erro para garantir que o usuário veja
+      setSnackbar({
+        open: true,
+        message: error.message || 'Erro ao analisar arquivo',
+        severity: 'error'
+      });
     } finally {
       setIsAnalisando(false);
     }
@@ -433,8 +454,29 @@ const ImportarProdutosCvh = () => {
             </Typography>
             
             {analiseError && (
-              <Alert severity="error" sx={{ mb: 3 }}>
+              <Alert severity="error" sx={{ mb: 3, fontSize: '1rem', fontWeight: 'medium' }}>
                 {analiseError}
+                {analiseResult?.erros && analiseResult.erros.length > 0 && (
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="subtitle2">Detalhes dos erros:</Typography>
+                    <List dense>
+                      {analiseResult.erros.slice(0, 5).map((erro, index) => (
+                        <ListItem key={index}>
+                          <ListItemText 
+                            primary={`Linha ${erro.linha}: ${erro.erro}`} 
+                          />
+                        </ListItem>
+                      ))}
+                      {analiseResult.erros.length > 5 && (
+                        <ListItem>
+                          <ListItemText 
+                            primary={`... e mais ${analiseResult.erros.length - 5} erros. Verifique o console para detalhes.`} 
+                          />
+                        </ListItem>
+                      )}
+                    </List>
+                  </Box>
+                )}
               </Alert>
             )}
             
