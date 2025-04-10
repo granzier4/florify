@@ -17,6 +17,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
       display: 'flex', 
       flexDirection: 'column', 
       minHeight: '100vh',
+      width: '100%',
       bgcolor: 'background.default'
     }}>
       <Header pageTitle={pageTitle} />
@@ -25,11 +26,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({
         component="main" 
         sx={{ 
           flexGrow: 1, 
-          py: 3, // Reduzindo o padding vertical
-          px: 0 // Removendo o padding horizontal para preencher toda a largura
+          py: 3,
+          px: 0,
+          width: '100%'
         }}
       >
-        <Container maxWidth={false}> {/* Usando maxWidth={false} para preencher toda a largura */}
+        <Container maxWidth={false} sx={{ width: '100%', px: { xs: 2, sm: 3 } }}>
           {children}
         </Container>
       </Box>

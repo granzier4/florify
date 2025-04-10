@@ -65,7 +65,7 @@ const DashboardNew = () => {
         </Alert>
       )}
       
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', margin: -1.5 }}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', margin: -1.5, width: '100%', minHeight: user?.tipo === 'usuario_loja' ? 'calc(100vh - 300px)' : 'auto' }}>
         {/* Card de Lojas */}
         <Box sx={{ width: { xs: '100%', sm: '50%', md: '33.33%' }, padding: 1.5 }}>
           <Paper elevation={2} sx={{ height: '100%', borderRadius: 2, overflow: 'hidden' }}>
@@ -230,29 +230,56 @@ const DashboardNew = () => {
         
         {/* Card de Gestão de Produtos para usuários usuario_loja */}
         {user?.tipo === 'usuario_loja' && (
-          <Box sx={{ width: { xs: '100%', sm: '50%', md: '33.33%' }, padding: 1.5 }}>
-            <Paper elevation={2} sx={{ height: '100%', borderRadius: 2, overflow: 'hidden' }}>
-              <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', border: 'none', boxShadow: 'none' }}>
-                <CardContent sx={{ flexGrow: 1 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <InventoryIcon color="primary" sx={{ mr: 0.5 }} fontSize="small" />
-                    <Typography variant="subtitle1">Gestão de Produtos</Typography>
-                  </Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Gerencie os produtos disponíveis para sua loja
-                  </Typography>
-                </CardContent>
-                <CardActions sx={{ pt: 0, borderTop: '1px solid', borderColor: 'divider' }}>
-                  <Button 
-                    size="small" 
-                    onClick={() => navigate('/produtos/gestao-loja')}
-                  >
-                    Gerenciar produtos
-                  </Button>
-                </CardActions>
-              </Card>
-            </Paper>
-          </Box>
+          <>
+            <Box sx={{ width: { xs: '100%', sm: '50%', md: '33.33%' }, padding: 1.5 }}>
+              <Paper elevation={2} sx={{ height: '100%', borderRadius: 2, overflow: 'hidden' }}>
+                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', border: 'none', boxShadow: 'none' }}>
+                  <CardContent sx={{ flexGrow: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <InventoryIcon color="primary" sx={{ mr: 0.5 }} fontSize="small" />
+                      <Typography variant="subtitle1">Gestão de Produtos</Typography>
+                    </Box>
+                    <Typography variant="body2" color="text.secondary">
+                      Gerencie os produtos disponíveis para sua loja
+                    </Typography>
+                  </CardContent>
+                  <CardActions sx={{ pt: 0, borderTop: '1px solid', borderColor: 'divider' }}>
+                    <Button 
+                      size="small" 
+                      onClick={() => navigate('/produtos/gestao-loja')}
+                    >
+                      Gerenciar produtos
+                    </Button>
+                  </CardActions>
+                </Card>
+              </Paper>
+            </Box>
+            
+            {/* Card de Estatísticas - Apenas para administrador de loja */}
+            <Box sx={{ width: { xs: '100%', sm: '50%', md: '33.33%' }, padding: 1.5 }}>
+              <Paper elevation={2} sx={{ height: '100%', borderRadius: 2, overflow: 'hidden' }}>
+                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', border: 'none', boxShadow: 'none' }}>
+                  <CardContent sx={{ flexGrow: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <PersonIcon color="primary" sx={{ mr: 0.5 }} fontSize="small" />
+                      <Typography variant="subtitle1">Usuários</Typography>
+                    </Box>
+                    <Typography variant="body2" color="text.secondary">
+                      Gerencie os usuários da sua loja
+                    </Typography>
+                  </CardContent>
+                  <CardActions sx={{ pt: 0, borderTop: '1px solid', borderColor: 'divider' }}>
+                    <Button 
+                      size="small" 
+                      onClick={() => navigate('/usuarios')}
+                    >
+                      Gerenciar usuários
+                    </Button>
+                  </CardActions>
+                </Card>
+              </Paper>
+            </Box>
+          </>
         )}
       </Box>
       

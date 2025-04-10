@@ -220,13 +220,9 @@ const Header: React.FC<HeaderProps> = ({ pageTitle }) => {
   return (
     <AppBar 
       position="static" 
-      elevation={0}
-      sx={{ 
-        backgroundColor: 'primary.main',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
-      }}
+      sx={{ width: '100%' }}
     >
-      <Container maxWidth={false}>
+      <Container maxWidth={false} sx={{ width: '100%' }}>
         <Toolbar sx={{ 
           display: 'flex', 
           justifyContent: 'space-between',

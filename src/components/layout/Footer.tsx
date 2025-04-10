@@ -7,7 +7,8 @@ const FooterContainer = styled(Box)(({ theme }) => ({
   borderTop: `1px solid ${theme.palette.divider}`,
   paddingTop: theme.breakpoints.down('sm') ? theme.spacing(4) : theme.spacing(6),
   paddingBottom: theme.breakpoints.down('sm') ? theme.spacing(4) : theme.spacing(6),
-  boxShadow: '0 -1px 3px rgba(0,0,0,0.02)'
+  boxShadow: '0 -1px 3px rgba(0,0,0,0.02)',
+  width: '100%'
 }));
 
 const FooterLink = styled(Link)(({ theme }) => ({
@@ -31,7 +32,7 @@ const Footer: React.FC = () => {
 
   return (
     <FooterContainer>
-      <Container maxWidth="lg">
+      <Container maxWidth={false} sx={{ width: '100%' }}>
         {/* Main Footer Content */}
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: isMobile ? 2 : 4 }}>
           {/* Column 1: About */}
