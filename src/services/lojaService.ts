@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from '../lib/supabaseClient';
 import { Loja } from '../types/auth';
 
 export interface CriarLojaDTO {

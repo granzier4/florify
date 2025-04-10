@@ -14,6 +14,7 @@ A Florify é uma plataforma SaaS multi-tenant voltada para a comercialização d
 3. Importação e controle de versão de produtos da CVH (via CSV)
 4. Exibição do catálogo com ativação por loja
 5. Associação de clientes a lojas com controle de favoritos
+6. Rastreabilidade completa da origem e atualização de produtos
 
 ## 3. PAPÉIS DO SISTEMA (ROLES)
 ### 3.1. master_plataforma
@@ -31,167 +32,77 @@ A Florify é uma plataforma SaaS multi-tenant voltada para a comercialização d
 
 ## 4. FLUXO DE CRIAÇÃO INICIAL (SEM AUTENTICAÇÃO)
 ### 4.1. Cadastro do `master_plataforma`
-- Verifica se já existe algum usuário com tipo master
-- Se não, exibe formulário com: nome, e-mail, senha
-- Usa `supabase.auth.signUp()`
-- Após sucesso, insere na tabela `usuarios` com `tipo = master_plataforma`, `loja_id = NULL`
+- Executado manualmente uma única vez no sistema
+- Usa Supabase Auth via `signUp()`
 
-### 4.2. Cadastro de loja (tenant)
+### 4.2. Cadastro de loja
 - Executado pelo master_plataforma
-- Campos obrigatórios:
-  - Razão social
-  - Nome fantasia
-  - CNPJ (único)
-  - E-mail
-  - Telefone
-  - Endereço
-  - Slug (editável e único)
+- Slug único editável, CNPJ único validado
 
 ### 4.3. Cadastro de `usuario_loja`
-- Associado obrigatoriamente a uma loja existente
-- Campos: nome, e-mail, senha, loja associada
-- Criado via `supabase.auth.signUp()`
-- Insere na tabela `usuarios` com tipo `usuario_loja`
+- Criado via `signUp()` com `tipo = usuario_loja` e `loja_id`
 
 ### 4.4. Cadastro de `cliente`
-- Criado via `supabase.auth.signUp()`
-- Associado a uma loja
-- Campos: nome, e-mail, senha, telefone (opcional), loja associada
-- Inserido na tabela `usuarios` com tipo `cliente`
+- Criado via `signUp()` com `tipo = cliente` e `loja_id`
 
-## 5. ESTRUTURA DAS TABELAS PRINCIPAIS
-### 5.1. Tabela `usuarios`
-| Campo     | Tipo     | Descrição                                    |
-|-----------|----------|-----------------------------------------------|
-| id        | UUID     | ID do Supabase Auth                          |
-| nome      | TEXT     | Nome completo do usuário                     |
-| email     | TEXT     | E-mail único                                |
-| tipo      | TEXT     | master_plataforma, usuario_loja, cliente     |
-| loja_id   | UUID     | Obrigatório para usuario_loja e cliente      |
-| criado_em | TIMESTAMP| Padrão: now()                               |
+## 5. TABELAS PADRÃO DO SISTEMA
+### 5.1. `lojas`
+- Campos: id (PK), razao_social, nome_fantasia, cnpj, email_contato, telefone, endereco, slug, status, criado_em, logo_url, tema (json)
 
-> Restrição: `loja_id` é obrigatório exceto para `master_plataforma`
+### 5.2. `usuarios`
+- Campos: id (PK), nome, email, tipo, loja_id (obrigatório para usuario_loja e cliente), criado_em
 
-### 5.2. Tabela `lojas`
-| Campo            | Tipo     | Descrição                            |
-|------------------|----------|---------------------------------------|
-| id               | UUID     | Chave primária                        |
-| razao_social     | TEXT     | Nome legal                            |
-| nome_fantasia    | TEXT     | Nome comercial                        |
-| cnpj             | TEXT     | Único no sistema                      |
-| email_contato    | TEXT     | E-mail da loja                        |
-| telefone         | TEXT     | Telefone                              |
-| endereco         | TEXT     | Endereço completo                     |
-| slug             | TEXT     | Editável e único                      |
-| status           | TEXT     | pendente / ativo / bloqueado          |
-| criado_em        | TIMESTAMP| Criado em                             |
-| logo_url         | TEXT     | URL do logotipo                       |
-| tema             | JSON     | Paleta de cores (configurável)        |
+### 5.3. `produtos_cvh`
+- Estrutura baseada na tabela real enviada:
+  - codbarra (PK)
+  - item_code
+  - descricao, descricao_curta
+  - categoria, grupo, condicao, unidade, peso
+  - cpc, epc, upc
+  - cor, ncm, foto, status
+  - data_atualizacao (timestamp)
 
-## 6. CONVENÇÕES DE DESENVOLVIMENTO
-- Campos obrigatórios validados no frontend
-- Todas requisições assíncronas devem exibir mensagens claras de sucesso ou erro
-- Layout base com responsividade mínima (mobile first)
-- Nomeação de arquivos e rotas padronizadas por entidade
+> O campo `codbarra` é a chave principal e única para identificação de produtos.
 
-## 7. PADRÃO DE INTERFACE E COMPONENTES REUTILIZÁVEIS
+## 6. IMPORTAÇÃO DE PRODUTOS DA CVH
+### 6.1. Objetivo
+Permitir que o master_plataforma importe arquivos CSV da CVH para atualização da base `produtos_cvh`, com controle de alterações e histórico completo.
+
+### 6.2. Processo resumido
+1. Upload do CSV com validação de campos
+2. Identificação de produtos:
+   - novos (não existem na base)
+   - alterados (existem mas com dados diferentes)
+   - inalterados (sem mudanças)
+3. Visualização dos itens novos/alterados
+4. Confirmação e aplicação das mudanças
+
+### 6.3. Campos mínimos exigidos no CSV
+- codbarra (chave principal)
+- item_code (suporte)
+- descricao, categoria, cor
+- peso, embalagem
+
+## 7. PADRÕES DE INTERFACE E COMPONENTES
 ### 7.1. Layout base
-- Header fixo com nome da loja, logout e logo
-- Menu lateral (sidebar)
-- Conteúdo principal
-- Footer opcional
+- Header fixo, menu lateral, conteúdo principal
 
-### 7.2. Cores padrão
-| Elemento         | Cor        |
-|------------------|------------|
-| Cor primária     | #2E7D32    |
-| Cor secundária   | #A5D6A7    |
-| Fundo neutro     | #F8F9FA    |
-| Texto principal  | #212121    |
-| Destaques        | #FFC107    |
+### 7.2. Paleta de cores
+| Elemento        | Cor       |
+|-----------------|-----------|
+| Primária        | #2E7D32   |
+| Secundária      | #A5D6A7   |
+| Neutro fundo    | #F8F9FA   |
+| Texto principal | #212121   |
+| Destaques       | #FFC107   |
 
 ### 7.3. Componentes reutilizáveis
-- `<BotaoPrimario />`, `<BotaoSecundario />`, `<BotaoDestaque />`
-- `<CampoTexto />` com label e validação integrada
-- `<Card />` com sombra, padding e border-radius
-- `<Tabela />`, `<MensagemErro />`, `<MensagemSucesso />`
+- `<BotaoPrimario />`, `<CampoTexto />`, `<Card />`, `<Tabela />`
+- `<MensagemErro />`, `<MensagemSucesso />`
 
-### 7.4. Estrutura de diretórios (React)
-| Tipo              | Caminho                          |
-|-------------------|----------------------------------|
-| Página            | /src/pages/lojas/Cadastrar.tsx   |
-| Componente        | /src/components/Button.tsx       |
-| Layout global     | /src/layouts/LayoutAdmin.tsx     |
-| Estilos globais   | /src/styles/globals.css          |
-
-## 8. VALIDAÇÃO DAS FUNCIONALIDADES
-- Campos obrigatórios sinalizados
-- Validação de CNPJ, e-mail, slug e senhas
-- Bloqueio de envio duplicado com botão desativado
-- Exibição de loading e mensagens reativas (toast ou modal)
-
-## 9. IMPORTAÇÃO DE ARQUIVOS CSV – PRODUTOS CVH
-
-### 9.1. Objetivo
-Permitir que o `master_plataforma` importe arquivos CSV da Cooperativa Veiling Holambra (CVH) contendo produtos atualizados. A importação deve ser controlada, auditada e validada antes da atualização da base oficial.
-
-### 9.2. Fluxo resumido
-1. Usuário master envia arquivo CSV pelo frontend
-2. Backend/cliente lê e valida os dados (estrutura, campos obrigatórios)
-3. Compara os itens com a base atual:
-   - Identifica produtos **novos**
-   - Identifica produtos **alterados** (exibe alterações)
-   - Ignora produtos **sem alteração**
-4. Exibe um resumo com os itens novos/alterados ao usuário
-5. Usuário confirma a importação final
-6. Os dados são inseridos/atualizados na tabela oficial
-7. Um log da operação é salvo para auditoria futura
-
-### 9.3. Tabela principal: `produtos_cvh`
-| Campo              | Tipo      | Descrição                                          |
-|--------------------|-----------|---------------------------------------------------|
-| itemcode           | TEXT      | Código único do produto (chave mestre)           |
-| descricao          | TEXT      | Descrição do produto                             |
-| categoria          | TEXT      | Categoria (ex: flor, planta, etc.)               |
-| cor                | TEXT      | Cor predominante                                 |
-| detalhes           | TEXT      | Observações/detalhes adicionais                  |
-| preco_unitario     | NUMERIC   | Preço de referência                              |
-| unidade_medida     | TEXT      | Tipo de unidade (vaso, cx, etc.)                 |
-| embalagem          | TEXT      | Tipo de embalagem                                |
-| cvh_data_atual     | DATE      | Data da última atualização desse item na CVH     |
-| lastupdatedate     | TIMESTAMP | Data da última atualização deste registro na base|
-
-> **itemcode** é o campo de controle principal. Diferentes descrições podem existir, mas se o código for o mesmo, ele é considerado o mesmo produto.
-
-### 9.4. Tabela auxiliar: `importacoes_cvh`
-| Campo             | Tipo      | Descrição                                     |
-|-------------------|-----------|-----------------------------------------------|
-| id                | UUID      | Identificador da importação                   |
-| nome_arquivo      | TEXT      | Nome do arquivo CSV enviado                   |
-| total_linhas      | INTEGER   | Quantidade total de registros no arquivo      |
-| novos             | INTEGER   | Quantidade de itens novos                     |
-| alterados         | INTEGER   | Quantidade de itens alterados                 |
-| usuario_id        | UUID      | Quem executou a importação                    |
-| data_importacao   | TIMESTAMP | Quando ocorreu                                |
-| status            | TEXT      | concluído / pendente / erro                   |
-| diff_preview      | JSON      | Pré-visualização de diferenças detectadas     |
-
-### 9.5. Validações obrigatórias
-- Todos os campos obrigatórios devem estar presentes
-- itemcode duplicado no mesmo arquivo é rejeitado
-- Arquivo CSV inválido (estrutura, separador, codificação) deve ser tratado com mensagem clara
-- Produtos com alteração devem mostrar visualmente o “antes e depois” por campo
-
-### 9.6. Tratamento de conflitos
-- O sistema **não atualiza automaticamente** os dados
-- Alterações só são salvas **após confirmação visual do master**
-- Histórico completo fica salvo na tabela de importações
-
-### 9.7. Histórico e rastreabilidade
-- Toda importação cria um novo log em `importacoes_cvh`
-- Arquivo CSV pode ser salvo em Supabase Storage para rastreabilidade
-- Cada produto pode ser relacionado com a última importação que o afetou
+### 7.4. Responsividade
+- Mobile first, grid adaptativo, botões full width em telas pequenas
 
 ---
 
-**Este documento consolida o escopo técnico e funcional do MVP da plataforma Florify, permitindo o início imediato do desenvolvimento frontend e integração com Supabase.**
+**Este documento reflete com fidelidade o estado atual do projeto, respeitando o modelo de dados real, a implementação da lógica de logs, e as práticas de desenvolvimento e UX estabelecidas para o MVP da plataforma Florify.**

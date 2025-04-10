@@ -5,10 +5,13 @@ import { AuthProvider } from './contexts/AuthContext';
 import RegisterMaster from './pages/RegisterMaster';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import DashboardNew from './pages/DashboardNew';
 import CadastrarLoja from './pages/CadastrarLoja';
 import ListarLojas from './pages/ListarLojas';
 import GerenciarUsuarios from './pages/GerenciarUsuarios';
 import ImportarProdutosCvh from './pages/ImportarProdutosCvh';
+import GestaoProdutosLoja from './pages/GestaoProdutosLoja';
+import AssociarProdutosLoja from './pages/AssociarProdutosLoja';
 import { useAuth } from './contexts/AuthContext';
 import React from 'react';
 
@@ -27,7 +30,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactElement }) => {
   return children;
 };
 
-// Tema personalizado com as cores do Florify
+// Tema personalizado com as cores do Florify e fonte Inter
 const theme = createTheme({
   palette: {
     primary: {
@@ -44,6 +47,30 @@ const theme = createTheme({
     },
     warning: {
       main: '#FFC107', // Destaques
+    },
+  },
+  typography: {
+    fontFamily: [
+      'Inter',
+      '-apple-system',
+      'BlinkMacSystemFont',
+      '"Segoe UI"',
+      'Roboto',
+      'Arial',
+      'sans-serif'
+    ].join(','),
+    h5: {
+      fontWeight: 600, // Semelhante ao estilo Apple
+    },
+    h6: {
+      fontWeight: 600,
+    },
+    subtitle1: {
+      fontWeight: 500, // Peso médio para subtítulos
+    },
+    button: {
+      textTransform: 'none', // Estilo Apple não usa texto todo em maiúsculas
+      fontWeight: 500,
     },
   },
 });
@@ -94,6 +121,30 @@ function App() {
               element={
                 <ProtectedRoute>
                   <ImportarProdutosCvh />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/produtos/gestao-loja" 
+              element={
+                <ProtectedRoute>
+                  <GestaoProdutosLoja />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/produtos/associar-loja" 
+              element={
+                <ProtectedRoute>
+                  <AssociarProdutosLoja />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/dashboard-new" 
+              element={
+                <ProtectedRoute>
+                  <DashboardNew />
                 </ProtectedRoute>
               } 
             />

@@ -9,7 +9,6 @@ import {
   CardActions,
   CircularProgress,
   Alert,
-  Grid
 } from '@mui/material';
 import { 
   Add as AddIcon, 
@@ -17,7 +16,9 @@ import {
   Dashboard as DashboardIcon,
   Settings as SettingsIcon,
   Person as PersonIcon,
-  CloudUpload as CloudUploadIcon
+  CloudUpload as CloudUploadIcon,
+  Inventory as InventoryIcon,
+  Link as LinkIcon
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { lojaService } from '../services/lojaService';
@@ -79,8 +80,8 @@ const Dashboard = () => {
         </Alert>
       )}
       
-      <Grid container spacing={3}>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+        <Box sx={{ flex: '1 1 300px', maxWidth: '350px' }}>
           <Card>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -110,9 +111,9 @@ const Dashboard = () => {
               </Button>
             </CardActions>
           </Card>
-        </Grid>
+        </Box>
         
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Box sx={{ flex: '1 1 300px', maxWidth: '350px' }}>
           <Card>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -132,9 +133,9 @@ const Dashboard = () => {
               </Button>
             </CardActions>
           </Card>
-        </Grid>
+        </Box>
         
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Box sx={{ flex: '1 1 300px', maxWidth: '350px' }}>
           <Card>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -151,9 +152,9 @@ const Dashboard = () => {
               </Button>
             </CardActions>
           </Card>
-        </Grid>
+        </Box>
         
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Box sx={{ flex: '1 1 300px', maxWidth: '350px' }}>
           <Card>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -170,32 +171,106 @@ const Dashboard = () => {
               </Button>
             </CardActions>
           </Card>
-        </Grid>
+        </Box>
         
+        {/* Cards para usuários master_plataforma */}
         {user?.tipo === 'master_plataforma' && (
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <CloudUploadIcon color="primary" sx={{ mr: 1 }} />
-                  <Typography variant="h6">Produtos CVH</Typography>
-                </Box>
-                <Typography variant="body2" color="text.secondary">
-                  Importe produtos da Cooperativa Veiling Holambra
-                </Typography>
-              </CardContent>
-              <CardActions>
-                <Button 
-                  size="small" 
-                  onClick={() => navigate('/produtos/importar-cvh')}
-                >
-                  Importar produtos
-                </Button>
-              </CardActions>
-            </Card>
-          </Grid>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, width: '100%', mt: 2 }}>
+            <Box sx={{ flex: '1 1 300px', maxWidth: '350px' }}>
+              <Card>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <CloudUploadIcon color="primary" sx={{ mr: 1 }} />
+                    <Typography variant="h6">Produtos CVH</Typography>
+                  </Box>
+                  <Typography variant="body2" color="text.secondary">
+                    Importe produtos da Cooperativa Veiling Holambra
+                  </Typography>
+                </CardContent>
+                <CardActions>
+                  <Button 
+                    size="small" 
+                    onClick={() => navigate('/produtos/importar-cvh')}
+                  >
+                    Importar produtos
+                  </Button>
+                </CardActions>
+              </Card>
+            </Box>
+            
+            <Box sx={{ flex: '1 1 300px', maxWidth: '350px' }}>
+              <Card>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <InventoryIcon color="primary" sx={{ mr: 1 }} />
+                    <Typography variant="h6">Gestão de Produtos</Typography>
+                  </Box>
+                  <Typography variant="body2" color="text.secondary">
+                    Gerencie os produtos disponíveis para cada loja
+                  </Typography>
+                </CardContent>
+                <CardActions>
+                  <Button 
+                    size="small" 
+                    onClick={() => navigate('/produtos/gestao-loja')}
+                  >
+                    Gerenciar produtos
+                  </Button>
+                </CardActions>
+              </Card>
+            </Box>
+            
+            <Box sx={{ flex: '1 1 300px', maxWidth: '350px' }}>
+              <Card>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <LinkIcon color="primary" sx={{ mr: 1 }} />
+                    <Typography variant="h6">Associar Produtos</Typography>
+                  </Box>
+                  <Typography variant="body2" color="text.secondary">
+                    Associe produtos CVH às lojas para exibição no catálogo
+                  </Typography>
+                </CardContent>
+                <CardActions>
+                  <Button 
+                    size="small" 
+                    onClick={() => navigate('/produtos/associar-loja')}
+                  >
+                    Associar produtos
+                  </Button>
+                </CardActions>
+              </Card>
+            </Box>
+          </Box>
         )}
-      </Grid>
+        
+        {/* Card de Gestão de Produtos para usuários usuario_loja */}
+        {user?.tipo === 'usuario_loja' && (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, width: '100%', mt: 2 }}>
+            <Box sx={{ flex: '1 1 300px', maxWidth: '350px' }}>
+              <Card>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <InventoryIcon color="primary" sx={{ mr: 1 }} />
+                    <Typography variant="h6">Gestão de Produtos</Typography>
+                  </Box>
+                  <Typography variant="body2" color="text.secondary">
+                    Gerencie os produtos disponíveis para sua loja
+                  </Typography>
+                </CardContent>
+                <CardActions>
+                  <Button 
+                    size="small" 
+                    onClick={() => navigate('/produtos/gestao-loja')}
+                  >
+                    Gerenciar produtos
+                  </Button>
+                </CardActions>
+              </Card>
+            </Box>
+          </Box>
+        )}
+      </Box>
       
       <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end' }}>
         <Button

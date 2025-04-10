@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from '../lib/supabaseClient';
 import Papa from 'papaparse';
 
 // Função auxiliar para normalizar dados (converter 'itemcode' para 'item_code')

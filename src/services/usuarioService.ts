@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from '../lib/supabaseClient';
 
 export interface Usuario {
   id: string;
