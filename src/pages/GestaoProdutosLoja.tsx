@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
-  Container, Typography, Box, Button, FormControl, InputLabel, 
+  Typography, Box, Button, FormControl, InputLabel, 
   Select, MenuItem, TextField, Chip, CircularProgress, Alert, Snackbar,
   InputAdornment, IconButton, Tooltip, Modal,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow
@@ -13,6 +13,7 @@ import CheckIcon from '@mui/icons-material/Check';
 import { useAuth } from '../contexts/AuthContext';
 import produtosLojaCvhService, { ProdutoLojaCvhCompleto, FiltrosProdutosLoja } from '../services/produtosLojaCvhService';
 import { lojaService } from '../services/lojaService';
+import MainLayout from '../components/layout/MainLayout';
 
 // Interface para operações em lote de produtos
 interface OperacaoProdutoLoja {
@@ -512,13 +513,13 @@ const GestaoProdutosLoja: React.FC = () => {
   }, [lojaSelecionada, produtoSelecionado, user?.id, carregarProdutos, mostrarFeedback]);
 
   return (
-    <>
-      <Container maxWidth={false} sx={{ mt: 2, mb: 2, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start' }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h5" component="h1" sx={{ fontWeight: 'medium', color: '#1976d2' }}>
-          Gestão de Produtos da Loja
-        </Typography>
-      </Box>
+    <MainLayout pageTitle="Gestão de Produtos">
+      <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h5" component="h1" sx={{ fontWeight: 'medium', color: '#1976d2' }}>
+            Gestão de Produtos da Loja
+          </Typography>
+        </Box>
 
       {/* Verificar se o usuário tem permissão para acessar esta tela */}
       {(isMasterPlataforma || isUsuarioLoja) ? (
@@ -747,56 +748,57 @@ const GestaoProdutosLoja: React.FC = () => {
           </Table>
         )}
       </TableContainer>
-      </Box>
-    </Container>
-      {/* Feedback */}
-      <Snackbar open={feedbackVisivel} autoHideDuration={6000} onClose={handleCloseFeedback}>
-        <Alert onClose={handleCloseFeedback} severity={feedbackTipo} sx={{ width: '100%' }}>
-          {feedbackMensagem}
-        </Alert>
-      </Snackbar>
+        </Box>
+        
+        {/* Feedback */}
+        <Snackbar open={feedbackVisivel} autoHideDuration={6000} onClose={handleCloseFeedback}>
+          <Alert onClose={handleCloseFeedback} severity={feedbackTipo} sx={{ width: '100%' }}>
+            {feedbackMensagem}
+          </Alert>
+        </Snackbar>
 
-      {/* Modal de edição */}
-      {modalEdicaoVisivel && (
-        <Modal
-          open={modalEdicaoVisivel}
-          onClose={() => setModalEdicaoVisivel(false)}
-          aria-labelledby="modal-edicao"
-          aria-describedby="modal-edicao"
-        >
-          <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '50%', bgcolor: 'background.paper', border: '1px solid #ddd', boxShadow: 24, p: 4 }}>
-            <Typography variant="h6" component="h2">
-              Edição de Produto
-            </Typography>
-            <Box sx={{ mt: 2 }}>
-              <TextField
-                label="Descrição"
-                value={produtoSelecionado?.descricao ?? ''}
-                onChange={(e) => produtoSelecionado && setProdutoSelecionado({ ...produtoSelecionado, descricao: e.target.value, associado: produtoSelecionado.associado })}
-                fullWidth
-              />
-              <TextField
-                label="Código de Barras"
-                value={produtoSelecionado?.codbarra ?? ''}
-                onChange={(e) => produtoSelecionado && setProdutoSelecionado({ ...produtoSelecionado, codbarra: e.target.value, associado: produtoSelecionado.associado })}
-                fullWidth
-                sx={{ mt: 2 }}
-              />
-              <TextField
-                label="Item Code"
-                value={produtoSelecionado?.item_code ?? ''}
-                onChange={(e) => produtoSelecionado && setProdutoSelecionado({ ...produtoSelecionado, item_code: e.target.value, associado: produtoSelecionado.associado })}
-                fullWidth
-                sx={{ mt: 2 }}
-              />
-              <Button variant="contained" color="primary" sx={{ mt: 2 }} onClick={handleSalvarAlteracoes}>
-                Salvar Alterações
-              </Button>
+        {/* Modal de edição */}
+        {modalEdicaoVisivel && (
+          <Modal
+            open={modalEdicaoVisivel}
+            onClose={() => setModalEdicaoVisivel(false)}
+            aria-labelledby="modal-edicao"
+            aria-describedby="modal-edicao"
+          >
+            <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: { xs: '90%', sm: '70%', md: '50%' }, bgcolor: 'background.paper', border: '1px solid #ddd', boxShadow: 24, p: 4 }}>
+              <Typography variant="h6" component="h2">
+                Edição de Produto
+              </Typography>
+              <Box sx={{ mt: 2 }}>
+                <TextField
+                  label="Descrição"
+                  value={produtoSelecionado?.descricao ?? ''}
+                  onChange={(e) => produtoSelecionado && setProdutoSelecionado({ ...produtoSelecionado, descricao: e.target.value, associado: produtoSelecionado.associado })}
+                  fullWidth
+                />
+                <TextField
+                  label="Código de Barras"
+                  value={produtoSelecionado?.codbarra ?? ''}
+                  onChange={(e) => produtoSelecionado && setProdutoSelecionado({ ...produtoSelecionado, codbarra: e.target.value, associado: produtoSelecionado.associado })}
+                  fullWidth
+                  sx={{ mt: 2 }}
+                />
+                <TextField
+                  label="Item Code"
+                  value={produtoSelecionado?.item_code ?? ''}
+                  onChange={(e) => produtoSelecionado && setProdutoSelecionado({ ...produtoSelecionado, item_code: e.target.value, associado: produtoSelecionado.associado })}
+                  fullWidth
+                  sx={{ mt: 2 }}
+                />
+                <Button variant="contained" color="primary" sx={{ mt: 2 }} onClick={handleSalvarAlteracoes}>
+                  Salvar Alterações
+                </Button>
+              </Box>
             </Box>
-          </Box>
-        </Modal>
-      )}
-    </>
+          </Modal>
+        )}
+      </Box>
+    </MainLayout>
   );
  };
 

@@ -3,14 +3,6 @@ import {
   Box, 
   Typography, 
   Button, 
-  Paper, 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableContainer, 
-  TableHead, 
-  TableRow,
-  TablePagination,
   IconButton,
   Chip,
   Dialog,
@@ -25,15 +17,19 @@ import {
   CircularProgress,
   Alert,
   Snackbar,
-  Grid,
-  SelectChangeEvent
+  SelectChangeEvent,
+  useMediaQuery,
+  useTheme,
+  Card,
+  CardContent,
+  CardActions,
+  Divider
 } from '@mui/material';
 import { 
   Add as AddIcon,
   Edit as EditIcon,
   Check as CheckIcon,
   Block as BlockIcon,
-  Person as PersonIcon,
   LinkOff as LinkOffIcon,
   Link as LinkIcon,
   Refresh as RefreshIcon
@@ -41,22 +37,42 @@ import {
 import { usuarioService, Usuario, CriarUsuarioDTO, AtualizarUsuarioDTO } from '../services/usuarioService';
 import { lojaService } from '../services/lojaService';
 import { Loja } from '../types/auth';
+import MainLayout from '../components/layout/MainLayout';
+import { useAuth } from '../contexts/AuthContext';
 
 const GerenciarUsuarios = () => {
+  // Contexto de autenticação
+  const { user } = useAuth();
+  
+  // Verificar tipo de usuário
+  const isMasterPlataforma = user?.tipo === 'master_plataforma';
+  const isAdminLoja = user?.tipo === 'usuario_loja';
+  
+  // Responsividade
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  
   // Estados para a lista de usuários
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [lojas, setLojas] = useState<Loja[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   // Estados para paginação
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   
-  // Estados para o modal de criação/edição
+  // Estados para modais
   const [openModal, setOpenModal] = useState(false);
+  const [openLojaModal, setOpenLojaModal] = useState(false);
   const [modalMode, setModalMode] = useState<'criar' | 'editar'>('criar');
   const [usuarioSelecionado, setUsuarioSelecionado] = useState<Usuario | null>(null);
+  
+  // Estados para o modal de associação de loja
+  const [usuarioParaAssociar, setUsuarioParaAssociar] = useState<Usuario | null>(null);
+  const [lojaSelecionada, setLojaSelecionada] = useState<string>('');
+  
+  // Estados para formulário
   const [formData, setFormData] = useState<CriarUsuarioDTO>({
     email: '',
     senha: '',
@@ -67,14 +83,9 @@ const GerenciarUsuarios = () => {
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [formLoading, setFormLoading] = useState(false);
-  
-  // Estados para o modal de associação de loja
-  const [openLojaModal, setOpenLojaModal] = useState(false);
-  const [usuarioParaAssociar, setUsuarioParaAssociar] = useState<Usuario | null>(null);
-  const [lojaSelecionada, setLojaSelecionada] = useState<string>('');
   const [lojaLoading, setLojaLoading] = useState(false);
   
-  // Estado para mensagens de sucesso/erro
+  // Estados para feedback
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -84,7 +95,7 @@ const GerenciarUsuarios = () => {
     message: '',
     severity: 'info'
   });
-  
+
   // Carregar dados iniciais
   useEffect(() => {
     const carregarDados = async () => {
@@ -95,22 +106,30 @@ const GerenciarUsuarios = () => {
           lojaService.listarLojas()
         ]);
         
-        setUsuarios(usuariosData);
+        // Filtrar usuários se for admin de loja
+        if (isAdminLoja && user?.loja_id) {
+          const usuariosFiltrados = usuariosData.filter(
+            u => u.loja_id === user.loja_id || u.id === user.id
+          );
+          setUsuarios(usuariosFiltrados);
+        } else {
+          setUsuarios(usuariosData);
+        }
+        
         setLojas(lojasData);
-        setError(null);
       } catch (err: any) {
         console.error('Erro ao carregar dados:', err);
-        setError(err.message || 'Falha ao carregar dados');
+        setError(err.message || 'Erro ao carregar usuários');
       } finally {
         setLoading(false);
       }
     };
     
     carregarDados();
-  }, []);
-  
+  }, [isAdminLoja, user?.loja_id]);
+
   // Funções de paginação
-  const handleChangePage = (_: unknown, newPage: number) => {
+  const handleChangePage = (_: React.MouseEvent<HTMLButtonElement> | null, newPage: number) => {
     setPage(newPage);
   };
   
@@ -118,9 +137,11 @@ const GerenciarUsuarios = () => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
-  
+
   // Funções para o modal de criação/edição
   const handleOpenCreateModal = () => {
+    setModalMode('criar');
+    setUsuarioSelecionado(null);
     setFormData({
       email: '',
       senha: '',
@@ -130,95 +151,88 @@ const GerenciarUsuarios = () => {
       loja_id: undefined
     });
     setFormErrors({});
-    setModalMode('criar');
-    setUsuarioSelecionado(null);
     setOpenModal(true);
   };
-  
+
   const handleOpenEditModal = (usuario: Usuario) => {
+    setModalMode('editar');
+    setUsuarioSelecionado(usuario);
     setFormData({
       email: usuario.email,
-      senha: '', // Não preenchemos a senha ao editar
+      senha: '',
       nome: usuario.nome,
       telefone: usuario.telefone || '',
       tipo: usuario.tipo,
       loja_id: usuario.loja_id
     });
     setFormErrors({});
-    setModalMode('editar');
-    setUsuarioSelecionado(usuario);
     setOpenModal(true);
   };
-  
+
   const handleCloseModal = () => {
     setOpenModal(false);
   };
-  
-  // Handlers separados para TextField e Select
-  const handleTextFieldChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+
+  // Funções para o formulário
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Limpar erro quando o campo é alterado
+    if (formErrors[name]) {
+      setFormErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
   };
-  
+
   const handleSelectChange = (e: SelectChangeEvent) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name as string]: value
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
-  
+
   const validateForm = () => {
     const errors: Record<string, string> = {};
     
-    if (!formData.nome) {
-      errors.nome = 'Nome é obrigatório';
-    }
+    if (!formData.email) errors.email = 'E-mail é obrigatório';
+    else if (!/\S+@\S+\.\S+/.test(formData.email)) errors.email = 'E-mail inválido';
     
-    if (modalMode === 'criar') {
-      if (!formData.email) {
-        errors.email = 'Email é obrigatório';
-      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-        errors.email = 'Email inválido';
-      }
-      
-      if (!formData.senha) {
-        errors.senha = 'Senha é obrigatória';
-      } else if (formData.senha.length < 6) {
-        errors.senha = 'A senha deve ter pelo menos 6 caracteres';
-      }
-    }
+    if (modalMode === 'criar' && !formData.senha) errors.senha = 'Senha é obrigatória';
     
-    if (!formData.tipo) {
-      errors.tipo = 'Tipo é obrigatório';
-    }
+    if (!formData.nome) errors.nome = 'Nome é obrigatório';
     
-    // Validar regras de negócio para loja_id
-    if (formData.tipo === 'master_plataforma' && formData.loja_id) {
-      errors.loja_id = 'Administradores da plataforma não podem estar associados a uma loja';
-    }
-    
-    if ((formData.tipo === 'usuario_loja' || formData.tipo === 'cliente') && !formData.loja_id) {
-      errors.loja_id = 'Usuários de loja e clientes devem estar associados a uma loja';
+    if (formData.tipo === 'usuario_loja' && !formData.loja_id && isMasterPlataforma) {
+      errors.loja_id = 'Loja é obrigatória para usuários do tipo Administrador de Loja';
     }
     
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
-  
-  const handleSubmitForm = async () => {
-    if (!validateForm()) {
-      return;
-    }
-    
-    setFormLoading(true);
+
+  const handleSubmit = async () => {
+    if (!validateForm()) return;
     
     try {
+      setFormLoading(true);
+      
       if (modalMode === 'criar') {
         await usuarioService.criarUsuario(formData);
+        
+        // Adicionar o novo usuário à lista
+        const novoUsuario: Usuario = {
+          id: Date.now().toString(), // Temporário até obter o ID real
+          email: formData.email,
+          nome: formData.nome,
+          telefone: formData.telefone,
+          tipo: formData.tipo,
+          loja_id: formData.loja_id,
+          status: 'ativo'
+        };
+        
+        setUsuarios(prev => [...prev, novoUsuario]);
+        
         setSnackbar({
           open: true,
           message: 'Usuário criado com sucesso!',
@@ -233,6 +247,12 @@ const GerenciarUsuarios = () => {
         };
         
         await usuarioService.atualizarUsuario(usuarioSelecionado.id, dadosAtualizacao);
+        
+        // Atualizar o usuário na lista
+        setUsuarios(prev => prev.map(u => 
+          u.id === usuarioSelecionado.id ? { ...u, ...dadosAtualizacao } : u
+        ));
+        
         setSnackbar({
           open: true,
           message: 'Usuário atualizado com sucesso!',
@@ -240,26 +260,23 @@ const GerenciarUsuarios = () => {
         });
       }
       
-      // Recarregar a lista de usuários
-      const usuariosAtualizados = await usuarioService.listarUsuarios();
-      setUsuarios(usuariosAtualizados);
-      
       handleCloseModal();
     } catch (err: any) {
       console.error('Erro ao salvar usuário:', err);
       setSnackbar({
         open: true,
-        message: err.message || 'Falha ao salvar usuário',
+        message: err.message || 'Erro ao salvar usuário',
         severity: 'error'
       });
     } finally {
       setFormLoading(false);
     }
   };
-  
+
   // Funções para alterar status do usuário
   const handleAlterarStatus = async (usuario: Usuario, novoStatus: 'ativo' | 'inativo') => {
     try {
+      setLoading(true);
       await usuarioService.alterarStatusUsuario(usuario.id, novoStatus);
       
       // Atualizar o usuário na lista
@@ -273,54 +290,59 @@ const GerenciarUsuarios = () => {
         severity: 'success'
       });
     } catch (err: any) {
-      console.error('Erro ao alterar status do usuário:', err);
+      console.error('Erro ao alterar status:', err);
       setSnackbar({
         open: true,
-        message: err.message || `Falha ao ${novoStatus === 'ativo' ? 'ativar' : 'desativar'} usuário`,
+        message: err.message || 'Erro ao alterar status do usuário',
         severity: 'error'
       });
+    } finally {
+      setLoading(false);
     }
   };
-  
+
   // Funções para resetar senha
   const handleResetarSenha = async (email: string) => {
     try {
+      setLoading(true);
       await usuarioService.resetarSenha(email);
       
       setSnackbar({
         open: true,
-        message: 'Email de redefinição de senha enviado com sucesso!',
+        message: 'Senha resetada com sucesso! Um e-mail foi enviado ao usuário.',
         severity: 'success'
       });
     } catch (err: any) {
       console.error('Erro ao resetar senha:', err);
       setSnackbar({
         open: true,
-        message: err.message || 'Falha ao enviar email de redefinição de senha',
+        message: err.message || 'Erro ao resetar senha',
         severity: 'error'
       });
+    } finally {
+      setLoading(false);
     }
   };
-  
+
   // Funções para o modal de associação de loja
   const handleOpenLojaModal = (usuario: Usuario) => {
     setUsuarioParaAssociar(usuario);
     setLojaSelecionada(usuario.loja_id || '');
     setOpenLojaModal(true);
   };
-  
+
   const handleCloseLojaModal = () => {
-    setOpenLojaModal(false);
     setUsuarioParaAssociar(null);
     setLojaSelecionada('');
+    setOpenLojaModal(false);
   };
-  
+
   const handleAssociarLoja = async () => {
     if (!usuarioParaAssociar) return;
     
-    setLojaLoading(true);
-    
     try {
+      setLojaLoading(true);
+      
       if (lojaSelecionada) {
         await usuarioService.associarUsuarioLoja(usuarioParaAssociar.id, lojaSelecionada);
         
@@ -354,7 +376,7 @@ const GerenciarUsuarios = () => {
       console.error('Erro ao associar/desassociar loja:', err);
       setSnackbar({
         open: true,
-        message: err.message || 'Falha ao associar/desassociar loja',
+        message: err.message || 'Erro ao associar/desassociar loja',
         severity: 'error'
       });
     } finally {
@@ -371,272 +393,280 @@ const GerenciarUsuarios = () => {
   
   // Função para fechar o snackbar
   const handleCloseSnackbar = () => {
-    setSnackbar(prev => ({ ...prev, open: false }));
+    setSnackbar((prevSnackbar) => ({ ...prevSnackbar, open: false }));
   };
-  
-  return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-        <Typography variant="h4" sx={{ display: 'flex', alignItems: 'center' }}>
-          <PersonIcon sx={{ mr: 1, fontSize: 30, color: 'primary.main' }} />
-          Gerenciar Usuários
+
+  // Função para renderizar usuários em formato de card (para mobile)
+  const renderUsuarioCard = (usuario: Usuario) => (
+    <Card key={usuario.id || usuario.email} sx={{ mb: 2, boxShadow: 2 }}>
+      <CardContent>
+        <Typography variant="h6" component="div">
+          {usuario.nome}
         </Typography>
-        <Button
-          variant="contained"
+        <Typography variant="body2" color="text.secondary" gutterBottom>
+          {usuario.email}
+        </Typography>
+        <Divider sx={{ my: 1 }} />
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 1 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+            <Typography variant="body2">
+              <strong>Tipo:</strong> {usuario.tipo === 'master_plataforma' ? 'Admin Plataforma' : 
+                      usuario.tipo === 'usuario_loja' ? 'Admin Loja' : 'Cliente'}
+            </Typography>
+            
+            <Box>
+            <Chip
+              label={usuario.status === 'ativo' ? 'Ativo' : 'Inativo'}
+              color={usuario.status === 'ativo' ? 'success' : 'default'}
+              size="small"
+              sx={{ fontWeight: 'medium' }}
+            />
+            </Box>
+          </Box>
+          <Typography variant="body2">
+            <strong>Loja:</strong> {getNomeLoja(usuario.loja_id) || 'Não associado'}
+          </Typography>
+        </Box>
+      </CardContent>
+      <CardActions>
+        <IconButton size="small" color="primary" onClick={() => handleOpenEditModal(usuario)}>
+          <EditIcon fontSize="small" />
+        </IconButton>
+        {usuario.status === 'ativo' ? (
+          <IconButton size="small" color="error" onClick={() => handleAlterarStatus(usuario, 'inativo')}>
+            <BlockIcon fontSize="small" />
+          </IconButton>
+        ) : (
+          <IconButton size="small" color="success" onClick={() => handleAlterarStatus(usuario, 'ativo')}>
+            <CheckIcon fontSize="small" />
+          </IconButton>
+        )}
+        <IconButton size="small" color="primary" onClick={() => handleResetarSenha(usuario.email)}>
+          <RefreshIcon fontSize="small" />
+        </IconButton>
+        <IconButton
+          size="small"
           color="primary"
-          startIcon={<AddIcon />}
-          onClick={handleOpenCreateModal}
+          onClick={() => handleOpenLojaModal(usuario)}
+          disabled={usuario.tipo === 'master_plataforma'}
         >
-          Novo Usuário
-        </Button>
-      </Box>
-      
-      {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {error}
-        </Alert>
-      )}
-      
-      <Paper elevation={3}>
-        <TableContainer>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Nome</TableCell>
-                <TableCell>Email</TableCell>
-                <TableCell>Tipo</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Loja</TableCell>
-                <TableCell align="center">Ações</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
-                    <CircularProgress size={40} />
-                    <Typography variant="body1" sx={{ mt: 2 }}>
-                      Carregando usuários...
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              ) : usuarios.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
-                    <Typography variant="body1">
-                      Nenhum usuário encontrado
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                usuarios
+          {usuario.loja_id ? <LinkOffIcon fontSize="small" /> : <LinkIcon fontSize="small" />}
+        </IconButton>
+      </CardActions>
+    </Card>
+  );
+
+  return (
+    <MainLayout pageTitle="Gerenciar Usuários">
+      <Box sx={{ width: '100%', padding: { xs: 1, sm: 2, md: 3 } }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+          <Typography variant="h4" component="h1" sx={{ alignSelf: { xs: 'flex-start', sm: 'auto' } }}>
+            Gerenciar Usuários
+          </Typography>
+
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<AddIcon />}
+            onClick={handleOpenCreateModal}
+            fullWidth={isMobile}
+            sx={{ maxWidth: { xs: '100%', sm: 'auto' } }}
+          >
+            Novo Usuário
+          </Button>
+        </Box>
+
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+            <CircularProgress />
+          </Box>
+        ) : error ? (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {error}
+          </Alert>
+        ) : (
+          <>
+            {/* Versão mobile: Cards */}
+            {isMobile ? (
+              <Box sx={{ mt: 2 }}>
+                {usuarios
                   .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                  .map((usuario) => (
-                    <TableRow key={usuario.id}>
-                      <TableCell>{usuario.nome}</TableCell>
-                      <TableCell>{usuario.email}</TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={
-                            usuario.tipo === 'master_plataforma' ? 'Administrador' :
-                            usuario.tipo === 'usuario_loja' ? 'Gerente de Loja' :
-                            'Cliente'
-                          }
-                          color={
-                            usuario.tipo === 'master_plataforma' ? 'primary' :
-                            usuario.tipo === 'usuario_loja' ? 'secondary' :
-                            'default'
-                          }
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={
-                            usuario.status === 'ativo' ? 'Ativo' :
-                            usuario.status === 'inativo' ? 'Inativo' :
-                            'Pendente'
-                          }
-                          color={
-                            usuario.status === 'ativo' ? 'success' :
-                            usuario.status === 'inativo' ? 'error' :
-                            'warning'
-                          }
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>{getNomeLoja(usuario.loja_id)}</TableCell>
-                      <TableCell align="center">
-                        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-                          <IconButton 
-                            color="primary" 
-                            onClick={() => handleOpenEditModal(usuario)}
-                            title="Editar usuário"
-                          >
-                            <EditIcon />
-                          </IconButton>
-                          
-                          {usuario.status === 'ativo' ? (
-                            <IconButton 
-                              color="error" 
-                              onClick={() => handleAlterarStatus(usuario, 'inativo')}
-                              title="Desativar usuário"
-                            >
-                              <BlockIcon />
+                  .map(renderUsuarioCard)}
+              </Box>
+            ) : (
+              /* Versão desktop: Cards em grid */
+              <>
+                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 2 }}>
+                  {usuarios
+                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                    .map((usuario) => (
+                      <Card key={usuario.id || usuario.email} sx={{ height: '100%' }}>
+                        <CardContent>
+                          <Typography variant="h6" component="div" noWrap>
+                            {usuario.nome}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                            {usuario.email}
+                          </Typography>
+                          <Divider sx={{ my: 1 }} />
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
+                            <Typography variant="body2">
+                              <strong>Tipo:</strong> {usuario.tipo === 'master_plataforma' ? 'Admin Plataforma' : usuario.tipo === 'usuario_loja' ? 'Admin Loja' : 'Cliente'}
+                            </Typography>
+                            <Chip
+                              label={usuario.status === 'ativo' ? 'Ativo' : 'Inativo'}
+                              color={usuario.status === 'ativo' ? 'success' : 'default'}
+                              size="small"
+                              sx={{ fontWeight: 'medium' }}
+                            />
+                          </Box>
+                          <Typography variant="body2" sx={{ mt: 1 }}>
+                            <strong>Loja:</strong> {getNomeLoja(usuario.loja_id) || 'Não associado'}
+                          </Typography>
+                        </CardContent>
+                        <CardActions>
+                          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, width: '100%' }}>
+                            <IconButton size="small" color="primary" onClick={() => handleOpenEditModal(usuario)}>
+                              <EditIcon fontSize="small" />
                             </IconButton>
-                          ) : (
-                            <IconButton 
-                              color="success" 
-                              onClick={() => handleAlterarStatus(usuario, 'ativo')}
-                              title="Ativar usuário"
-                            >
-                              <CheckIcon />
+
+                            {usuario.status === 'ativo' ? (
+                              <IconButton size="small" color="error" onClick={() => handleAlterarStatus(usuario, 'inativo')}>
+                                <BlockIcon fontSize="small" />
+                              </IconButton>
+                            ) : (
+                              <IconButton size="small" color="success" onClick={() => handleAlterarStatus(usuario, 'ativo')}>
+                                <CheckIcon fontSize="small" />
+                              </IconButton>
+                            )}
+
+                            <IconButton size="small" color="primary" onClick={() => handleResetarSenha(usuario.email)}>
+                              <RefreshIcon fontSize="small" />
                             </IconButton>
-                          )}
-                          
-                          <IconButton 
-                            color="info" 
-                            onClick={() => handleResetarSenha(usuario.email)}
-                            title="Resetar senha"
-                          >
-                            <RefreshIcon />
-                          </IconButton>
-                          
-                          <IconButton 
-                            color="secondary" 
-                            onClick={() => handleOpenLojaModal(usuario)}
-                            title={usuario.loja_id ? "Alterar associação de loja" : "Associar à loja"}
-                          >
-                            {usuario.loja_id ? <LinkIcon /> : <LinkOffIcon />}
-                          </IconButton>
-                        </Box>
-                      </TableCell>
-                    </TableRow>
-                  ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-        
-        <TablePagination
-          rowsPerPageOptions={[5, 10, 25]}
-          component="div"
-          count={usuarios.length}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={handleChangePage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-          labelRowsPerPage="Itens por página:"
-          labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
-        />
-      </Paper>
-      
-      {/* Modal de criação/edição de usuário */}
-      <Dialog 
-        open={openModal} 
+
+                            <IconButton
+                              size="small"
+                              color="primary"
+                              onClick={() => handleOpenLojaModal(usuario)}
+                              disabled={usuario.tipo === 'master_plataforma'}
+                            >
+                              {usuario.loja_id ? <LinkOffIcon fontSize="small" /> : <LinkIcon fontSize="small" />}
+                            </IconButton>
+                          </Box>
+                        </CardActions>
+                      </Card>
+                    ))}
+                </Box>
+                
+                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Button 
+                      disabled={page === 0} 
+                      onClick={() => handleChangePage(null, page - 1)}
+                      variant="outlined"
+                    >
+                      Anterior
+                    </Button>
+                    <Typography>
+                      Página {page + 1} de {Math.ceil(usuarios.length / rowsPerPage)}
+                    </Typography>
+                    <Button 
+                      disabled={page >= Math.ceil(usuarios.length / rowsPerPage) - 1} 
+                      onClick={() => handleChangePage(null, page + 1)}
+                      variant="outlined"
+                    >
+                      Próxima
+                    </Button>
+                  </Box>
+                </Box>
+              </>
+            )}
+          </>
+        )}
+      </Box>
+
+      {/* Modal de criação/edição */}
+      <Dialog
+        open={openModal}
         onClose={handleCloseModal}
         fullWidth
         maxWidth="md"
+        sx={{ '& .MuiDialog-paper': { width: '100%', margin: { xs: '16px', sm: '32px' } } }}
       >
         <DialogTitle>
           {modalMode === 'criar' ? 'Novo Usuário' : 'Editar Usuário'}
         </DialogTitle>
-        
         <DialogContent>
-          <Grid container spacing={3} sx={{ mt: 0 }}>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                label="Nome"
-                name="nome"
-                value={formData.nome}
-                onChange={handleTextFieldChange}
-                error={!!formErrors.nome}
-                helperText={formErrors.nome}
-                margin="normal"
-                required
-              />
-            </Grid>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
+            <TextField
+              label="Nome"
+              name="nome"
+              value={formData.nome}
+              onChange={handleInputChange}
+              fullWidth
+              error={!!formErrors.nome}
+              helperText={formErrors.nome}
+            />
             
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                label="Email"
-                name="email"
-                type="email"
-                value={formData.email}
-                onChange={handleTextFieldChange}
-                error={!!formErrors.email}
-                helperText={formErrors.email}
-                margin="normal"
-                required
-                disabled={modalMode === 'editar'}
-              />
-            </Grid>
+            <TextField
+              label="E-mail"
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleInputChange}
+              fullWidth
+              error={!!formErrors.email}
+              helperText={formErrors.email}
+              disabled={modalMode === 'editar'}
+            />
             
             {modalMode === 'criar' && (
-              <Grid size={{ xs: 12, md: 6 }}>
-                <TextField
-                  fullWidth
-                  label="Senha"
-                  name="senha"
-                  type="password"
-                  value={formData.senha}
-                  onChange={handleTextFieldChange}
-                  error={!!formErrors.senha}
-                  helperText={formErrors.senha}
-                  margin="normal"
-                  required
-                />
-              </Grid>
+              <TextField
+                label="Senha"
+                name="senha"
+                type="password"
+                value={formData.senha}
+                onChange={handleInputChange}
+                fullWidth
+                error={!!formErrors.senha}
+                helperText={formErrors.senha}
+              />
             )}
             
-            <Grid size={{ xs: 12, md: modalMode === 'criar' ? 6 : 12 }}>
-              <TextField
-                fullWidth
-                label="Telefone"
-                name="telefone"
-                value={formData.telefone}
-                onChange={handleTextFieldChange}
-                margin="normal"
-              />
-            </Grid>
+            <TextField
+              label="Telefone"
+              name="telefone"
+              value={formData.telefone}
+              onChange={handleInputChange}
+              fullWidth
+            />
             
-            <Grid size={{ xs: 12, md: 6 }}>
-              <FormControl fullWidth margin="normal" required error={!!formErrors.tipo}>
-                <InputLabel id="tipo-label">Tipo</InputLabel>
-                <Select
-                  labelId="tipo-label"
-                  name="tipo"
-                  value={formData.tipo}
-                  onChange={handleSelectChange}
-                  label="Tipo"
-                >
-                  <MenuItem value="master_plataforma">Administrador</MenuItem>
-                  <MenuItem value="usuario_loja">Gerente de Loja</MenuItem>
-                  <MenuItem value="cliente">Cliente</MenuItem>
-                </Select>
-                {formErrors.tipo && (
-                  <Typography variant="caption" color="error">
-                    {formErrors.tipo}
-                  </Typography>
-                )}
-              </FormControl>
-            </Grid>
+            <FormControl fullWidth>
+              <InputLabel>Tipo de Usuário</InputLabel>
+              <Select
+                name="tipo"
+                value={formData.tipo}
+                onChange={handleSelectChange}
+                label="Tipo de Usuário"
+                disabled={!isMasterPlataforma}
+              >
+                <MenuItem value="usuario_loja">Administrador de Loja</MenuItem>
+                <MenuItem value="master_plataforma">Administrador da Plataforma</MenuItem>
+                <MenuItem value="cliente">Cliente</MenuItem>
+              </Select>
+            </FormControl>
             
-            <Grid size={{ xs: 12, md: 6 }}>
-              <FormControl fullWidth margin="normal" error={!!formErrors.loja_id}>
-                <InputLabel id="loja-label">Loja {formData.tipo !== 'master_plataforma' ? '(obrigatório)' : '(opcional)'}</InputLabel>
+            {formData.tipo === 'usuario_loja' && isMasterPlataforma && (
+              <FormControl fullWidth error={!!formErrors.loja_id}>
+                <InputLabel>Loja</InputLabel>
                 <Select
-                  labelId="loja-label"
                   name="loja_id"
                   value={formData.loja_id || ''}
                   onChange={handleSelectChange}
-                  label={`Loja ${formData.tipo !== 'master_plataforma' ? '(obrigatório)' : '(opcional)'}`}
-                  disabled={formData.tipo === 'master_plataforma'}
+                  label="Loja"
                 >
                   <MenuItem value="">
-                    <em>Nenhuma</em>
+                    <em>Selecione uma loja</em>
                   </MenuItem>
                   {lojas.map(loja => (
                     <MenuItem key={loja.id} value={loja.id}>
@@ -650,100 +680,91 @@ const GerenciarUsuarios = () => {
                   </Typography>
                 )}
               </FormControl>
-            </Grid>
-          </Grid>
+            )}
+          </Box>
         </DialogContent>
-        
-        <DialogActions>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
           <Button onClick={handleCloseModal} color="inherit">
             Cancelar
           </Button>
           <Button 
-            onClick={handleSubmitForm} 
-            color="primary" 
-            variant="contained"
+            onClick={handleSubmit} 
+            variant="contained" 
+            color="primary"
             disabled={formLoading}
-            startIcon={formLoading ? <CircularProgress size={20} /> : null}
           >
-            {formLoading ? 'Salvando...' : 'Salvar'}
+            {formLoading ? <CircularProgress size={24} /> : 'Salvar'}
           </Button>
         </DialogActions>
       </Dialog>
-      
+
       {/* Modal de associação de loja */}
-      <Dialog 
-        open={openLojaModal} 
+      <Dialog
+        open={openLojaModal}
         onClose={handleCloseLojaModal}
         fullWidth
         maxWidth="sm"
       >
         <DialogTitle>
-          Associar Usuário à Loja
+          {usuarioParaAssociar?.loja_id ? 'Alterar Associação de Loja' : 'Associar à Loja'}
         </DialogTitle>
-        
         <DialogContent>
-          <Typography variant="body1" sx={{ mb: 2 }}>
-            Usuário: <strong>{usuarioParaAssociar?.nome}</strong>
-          </Typography>
-          
-          <FormControl fullWidth margin="normal">
-            <InputLabel id="associar-loja-label">Loja</InputLabel>
-            <Select
-              labelId="associar-loja-label"
-              value={lojaSelecionada}
-              onChange={(e: SelectChangeEvent) => setLojaSelecionada(e.target.value)}
-              label="Loja"
-              disabled={usuarioParaAssociar?.tipo === 'master_plataforma'}
-            >
-              <MenuItem value="">
-                <em>Nenhuma (Desassociar)</em>
-              </MenuItem>
-              {lojas.map(loja => (
-                <MenuItem key={loja.id} value={loja.id}>
-                  {loja.nome_fantasia}
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="body1" gutterBottom>
+              Usuário: <strong>{usuarioParaAssociar?.nome}</strong>
+            </Typography>
+            
+            <FormControl fullWidth sx={{ mt: 2 }}>
+              <InputLabel>Loja</InputLabel>
+              <Select
+                value={lojaSelecionada}
+                onChange={(e) => setLojaSelecionada(e.target.value)}
+                label="Loja"
+              >
+                <MenuItem value="">
+                  <em>Nenhuma (Remover associação)</em>
                 </MenuItem>
-              ))}
-            </Select>
-            {usuarioParaAssociar?.tipo === 'master_plataforma' && (
-              <Typography variant="caption" color="error">
-                Administradores da plataforma não podem ser associados a uma loja
-              </Typography>
-            )}
-          </FormControl>
+                {lojas.map(loja => (
+                  <MenuItem key={loja.id} value={loja.id}>
+                    {loja.nome_fantasia}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
         </DialogContent>
-        
-        <DialogActions>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
           <Button onClick={handleCloseLojaModal} color="inherit">
             Cancelar
           </Button>
           <Button 
             onClick={handleAssociarLoja} 
-            color="primary" 
-            variant="contained"
-            disabled={lojaLoading || usuarioParaAssociar?.tipo === 'master_plataforma'}
-            startIcon={lojaLoading ? <CircularProgress size={20} /> : null}
+            variant="contained" 
+            color="primary"
+            disabled={lojaLoading}
           >
-            {lojaLoading ? 'Salvando...' : 'Salvar'}
+            {lojaLoading ? <CircularProgress size={24} /> : 'Salvar'}
           </Button>
         </DialogActions>
       </Dialog>
-      
-      {/* Snackbar para mensagens */}
+
+      {/* Snackbar para feedback */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}
         onClose={handleCloseSnackbar}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert 
-          onClose={handleCloseSnackbar} 
-          severity={snackbar.severity} 
+        <Alert
+          onClose={handleCloseSnackbar}
+          severity={snackbar.severity}
+          variant="filled"
           sx={{ width: '100%' }}
         >
           {snackbar.message}
         </Alert>
       </Snackbar>
-    </Box>
+    </MainLayout>
   );
 };
 
