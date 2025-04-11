@@ -5,74 +5,100 @@ import { AuthProvider } from './contexts/AuthContext';
 import RegisterMaster from './pages/RegisterMaster';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import DashboardNew from './pages/DashboardNew';
 import CadastrarLoja from './pages/CadastrarLoja';
 import ListarLojas from './pages/ListarLojas';
+import GerenciarLojas from './pages/GerenciarLojas';
 import GerenciarUsuarios from './pages/GerenciarUsuarios';
 import ImportarProdutosCvh from './pages/ImportarProdutosCvh';
 import GestaoProdutosLoja from './pages/GestaoProdutosLoja';
-import AssociarProdutosLoja from './pages/AssociarProdutosLoja';
 import { useAuth } from './contexts/AuthContext';
 import React from 'react';
 
 // Componente para rotas protegidas
 const ProtectedRoute = ({ children }: { children: React.ReactElement }) => {
   const { user, loading } = useAuth();
-  
+
   if (loading) {
     return <div>Carregando...</div>;
   }
-  
+
   if (!user) {
     return <Navigate to="/login" />;
   }
-  
+
   return children;
 };
 
-// Tema personalizado com as cores do Florify e fonte Inter
+// Tema personalizado
 const theme = createTheme({
   palette: {
     primary: {
-      main: '#2E7D32', // Cor primária
+      main: '#2E7D32',
     },
     secondary: {
-      main: '#A5D6A7', // Cor secundária
-    },
-    background: {
-      default: '#F8F9FA', // Fundo neutro
-    },
-    text: {
-      primary: '#212121', // Texto principal
-    },
-    warning: {
-      main: '#FFC107', // Destaques
+      main: '#FFC107',
     },
   },
   typography: {
     fontFamily: [
-      'Inter',
-      '-apple-system',
-      'BlinkMacSystemFont',
-      '"Segoe UI"',
       'Roboto',
       'Arial',
       'sans-serif'
     ].join(','),
-    h5: {
-      fontWeight: 600, // Semelhante ao estilo Apple
-    },
-    h6: {
-      fontWeight: 600,
-    },
-    subtitle1: {
-      fontWeight: 500, // Peso médio para subtítulos
-    },
-    button: {
-      textTransform: 'none', // Estilo Apple não usa texto todo em maiúsculas
-      fontWeight: 500,
-    },
   },
+  components: {
+    MuiCssBaseline: {
+      styleOverrides: `
+        *, *::before, *::after {
+          box-sizing: border-box;
+          margin: 0;
+          padding: 0;
+        }
+        html, body, #root {
+          width: 100%;
+          max-width: 100vw;
+          overflow-x: hidden;
+          margin: 0;
+          padding: 0;
+        }
+        .MuiContainer-root {
+          padding-left: 0 !important;
+          padding-right: 0 !important;
+          max-width: 100vw !important;
+          width: 100% !important;
+        }
+        .MuiAppBar-root {
+          width: 100vw !important;
+          left: 0 !important;
+          right: 0 !important;
+          margin: 0 !important;
+        }
+      `,
+    },
+    MuiContainer: {
+      defaultProps: {
+        disableGutters: true,
+        maxWidth: false
+      },
+      styleOverrides: {
+        root: {
+          paddingLeft: 0,
+          paddingRight: 0,
+          maxWidth: '100vw',
+          width: '100%'
+        }
+      }
+    },
+    MuiToolbar: {
+      styleOverrides: {
+        root: {
+          paddingLeft: '16px',
+          paddingRight: '16px',
+          width: '100%'
+        }
+      }
+    }
+  }
 });
 
 function App() {
@@ -92,11 +118,12 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+
             <Route 
               path="/lojas" 
               element={
                 <ProtectedRoute>
-                  <ListarLojas />
+                  <GerenciarLojas />
                 </ProtectedRoute>
               } 
             />
@@ -117,7 +144,7 @@ function App() {
               } 
             />
             <Route 
-              path="/produtos/importar-cvh" 
+              path="/importar-produtos" 
               element={
                 <ProtectedRoute>
                   <ImportarProdutosCvh />
@@ -125,30 +152,16 @@ function App() {
               } 
             />
             <Route 
-              path="/produtos/gestao-loja" 
+              path="/gestao-produtos" 
               element={
                 <ProtectedRoute>
                   <GestaoProdutosLoja />
                 </ProtectedRoute>
               } 
             />
-            <Route 
-              path="/produtos/associar-loja" 
-              element={
-                <ProtectedRoute>
-                  <AssociarProdutosLoja />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/dashboard-new" 
-              element={
-                <ProtectedRoute>
-                  <DashboardNew />
-                </ProtectedRoute>
-              } 
-            />
-            <Route path="*" element={<Navigate to="/register" />} />
+
+            <Route path="/" element={<Navigate to="/dashboard" />} />
+            <Route path="*" element={<Navigate to="/dashboard" />} />
           </Routes>
         </Router>
       </AuthProvider>

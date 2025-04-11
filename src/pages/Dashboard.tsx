@@ -9,11 +9,11 @@ import {
   CardActions,
   CircularProgress,
   Alert,
+  Paper
 } from '@mui/material';
 import { 
   Add as AddIcon, 
   Store as StoreIcon,
-  Dashboard as DashboardIcon,
   Settings as SettingsIcon,
   Person as PersonIcon,
   CloudUpload as CloudUploadIcon,
@@ -23,9 +23,10 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { lojaService } from '../services/lojaService';
 import { Loja } from '../types/auth';
+import MainLayout from '../components/layout/MainLayout';
 
-const Dashboard = () => {
-  const { user, logout } = useAuth();
+const DashboardNew = () => {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [lojas, setLojas] = useState<Loja[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,23 +49,7 @@ const Dashboard = () => {
   }, []);
   
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-        <Typography variant="h4">
-          Dashboard
-        </Typography>
-        <Box>
-          <Button 
-            variant="outlined" 
-            color="primary" 
-            onClick={() => logout()}
-            sx={{ ml: 2 }}
-          >
-            Sair
-          </Button>
-        </Box>
-      </Box>
-      
+    <MainLayout pageTitle="Dashboard">
       <Box sx={{ mb: 4 }}>
         <Typography variant="h5" gutterBottom>
           Bem-vindo, {user?.nome || user?.email}
@@ -80,198 +65,225 @@ const Dashboard = () => {
         </Alert>
       )}
       
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-        <Box sx={{ flex: '1 1 300px', maxWidth: '350px' }}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <StoreIcon color="primary" sx={{ mr: 1 }} />
-                <Typography variant="h6">Lojas</Typography>
-              </Box>
-              <Typography variant="h4" color="primary">
-                {loading ? <CircularProgress size={24} /> : lojas.length}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Total de lojas cadastradas na plataforma
-              </Typography>
-            </CardContent>
-            <CardActions>
-              <Button 
-                size="small" 
-                onClick={() => navigate('/lojas')}
-              >
-                Ver todas
-              </Button>
-              <Button 
-                size="small" 
-                color="primary"
-                onClick={() => navigate('/lojas/cadastrar')}
-              >
-                Adicionar nova
-              </Button>
-            </CardActions>
-          </Card>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', margin: -1.5, width: '100%', minHeight: user?.tipo === 'usuario_loja' ? 'calc(100vh - 300px)' : 'auto' }}>
+        {/* Card de Lojas */}
+        <Box sx={{ width: { xs: '100%', sm: '50%', md: '33.33%' }, padding: 1.5 }}>
+          <Paper elevation={2} sx={{ height: '100%', borderRadius: 2, overflow: 'hidden' }}>
+            <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', border: 'none', boxShadow: 'none' }}>
+              <CardContent sx={{ flexGrow: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <StoreIcon color="primary" sx={{ mr: 0.5 }} fontSize="small" />
+                  <Typography variant="subtitle1">Lojas</Typography>
+                </Box>
+                <Typography variant="h5" color="primary">
+                  {loading ? <CircularProgress size={24} /> : lojas.length}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  Total de lojas cadastradas na plataforma
+                </Typography>
+              </CardContent>
+              <CardActions sx={{ pt: 0, borderTop: '1px solid', borderColor: 'divider' }}>
+                <Button 
+                  size="small" 
+                  onClick={() => navigate('/lojas')}
+                >
+                  Ver todas
+                </Button>
+                <Button 
+                  size="small" 
+                  color="primary"
+                  onClick={() => navigate('/lojas/cadastrar')}
+                >
+                  Adicionar nova
+                </Button>
+              </CardActions>
+            </Card>
+          </Paper>
         </Box>
         
-        <Box sx={{ flex: '1 1 300px', maxWidth: '350px' }}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <PersonIcon color="primary" sx={{ mr: 1 }} />
-                <Typography variant="h6">Usuários</Typography>
-              </Box>
-              <Typography variant="body2" color="text.secondary">
-                Gerencie os usuários da plataforma
-              </Typography>
-            </CardContent>
-            <CardActions>
-              <Button 
-                size="small" 
-                onClick={() => navigate('/usuarios')}
-              >
-                Gerenciar usuários
-              </Button>
-            </CardActions>
-          </Card>
+        {/* Card de Usuários */}
+        <Box sx={{ width: { xs: '100%', sm: '50%', md: '33.33%' }, padding: 1.5 }}>
+          <Paper elevation={2} sx={{ height: '100%', borderRadius: 2, overflow: 'hidden' }}>
+            <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', border: 'none', boxShadow: 'none' }}>
+              <CardContent sx={{ flexGrow: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <PersonIcon color="primary" sx={{ mr: 0.5 }} fontSize="small" />
+                  <Typography variant="subtitle1">Usuários</Typography>
+                </Box>
+                <Typography variant="body2" color="text.secondary">
+                  Gerencie os usuários da plataforma
+                </Typography>
+              </CardContent>
+              <CardActions sx={{ pt: 0, borderTop: '1px solid', borderColor: 'divider' }}>
+                <Button 
+                  size="small" 
+                  onClick={() => navigate('/usuarios')}
+                >
+                  Gerenciar
+                </Button>
+              </CardActions>
+            </Card>
+          </Paper>
         </Box>
         
-        <Box sx={{ flex: '1 1 300px', maxWidth: '350px' }}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <DashboardIcon color="primary" sx={{ mr: 1 }} />
-                <Typography variant="h6">Estatísticas</Typography>
-              </Box>
-              <Typography variant="body2" color="text.secondary">
-                Acompanhe o desempenho da plataforma
-              </Typography>
-            </CardContent>
-            <CardActions>
-              <Button size="small" disabled>
-                Em breve
-              </Button>
-            </CardActions>
-          </Card>
-        </Box>
-        
-        <Box sx={{ flex: '1 1 300px', maxWidth: '350px' }}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <SettingsIcon color="primary" sx={{ mr: 1 }} />
-                <Typography variant="h6">Configurações</Typography>
-              </Box>
-              <Typography variant="body2" color="text.secondary">
-                Configure as opções da plataforma
-              </Typography>
-            </CardContent>
-            <CardActions>
-              <Button size="small" disabled>
-                Em breve
-              </Button>
-            </CardActions>
-          </Card>
+        {/* Card de Configurações */}
+        <Box sx={{ width: { xs: '100%', sm: '50%', md: '33.33%' }, padding: 1.5 }}>
+          <Paper elevation={2} sx={{ height: '100%', borderRadius: 2, overflow: 'hidden' }}>
+            <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', border: 'none', boxShadow: 'none' }}>
+              <CardContent sx={{ flexGrow: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <SettingsIcon color="primary" sx={{ mr: 0.5 }} fontSize="small" />
+                  <Typography variant="subtitle1">Configurações</Typography>
+                </Box>
+                <Typography variant="body2" color="text.secondary">
+                  Configure as opções da plataforma
+                </Typography>
+              </CardContent>
+              <CardActions sx={{ pt: 0, borderTop: '1px solid', borderColor: 'divider' }}>
+                <Button size="small" disabled>
+                  Em breve
+                </Button>
+              </CardActions>
+            </Card>
+          </Paper>
         </Box>
         
         {/* Cards para usuários master_plataforma */}
         {user?.tipo === 'master_plataforma' && (
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, width: '100%', mt: 2 }}>
-            <Box sx={{ flex: '1 1 300px', maxWidth: '350px' }}>
-              <Card>
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <CloudUploadIcon color="primary" sx={{ mr: 1 }} />
-                    <Typography variant="h6">Produtos CVH</Typography>
-                  </Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Importe produtos da Cooperativa Veiling Holambra
-                  </Typography>
-                </CardContent>
-                <CardActions>
-                  <Button 
-                    size="small" 
-                    onClick={() => navigate('/produtos/importar-cvh')}
-                  >
-                    Importar produtos
-                  </Button>
-                </CardActions>
-              </Card>
+          <>
+            {/* Card de Produtos CVH */}
+            <Box sx={{ width: { xs: '100%', sm: '50%', md: '33.33%' }, padding: 1.5 }}>
+              <Paper elevation={2} sx={{ height: '100%', borderRadius: 2, overflow: 'hidden' }}>
+                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', border: 'none', boxShadow: 'none' }}>
+                  <CardContent sx={{ flexGrow: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <CloudUploadIcon color="primary" sx={{ mr: 0.5 }} fontSize="small" />
+                      <Typography variant="subtitle1">Produtos CVH</Typography>
+                    </Box>
+                    <Typography variant="body2" color="text.secondary">
+                      Importe produtos da Cooperativa Veiling Holambra
+                    </Typography>
+                  </CardContent>
+                  <CardActions sx={{ pt: 0, borderTop: '1px solid', borderColor: 'divider' }}>
+                    <Button 
+                      size="small" 
+                      onClick={() => navigate('/produtos/importar-cvh')}
+                    >
+                      Importar produtos
+                    </Button>
+                  </CardActions>
+                </Card>
+              </Paper>
             </Box>
             
-            <Box sx={{ flex: '1 1 300px', maxWidth: '350px' }}>
-              <Card>
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <InventoryIcon color="primary" sx={{ mr: 1 }} />
-                    <Typography variant="h6">Gestão de Produtos</Typography>
-                  </Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Gerencie os produtos disponíveis para cada loja
-                  </Typography>
-                </CardContent>
-                <CardActions>
-                  <Button 
-                    size="small" 
-                    onClick={() => navigate('/produtos/gestao-loja')}
-                  >
-                    Gerenciar produtos
-                  </Button>
-                </CardActions>
-              </Card>
+            {/* Card de Gestão de Produtos */}
+            <Box sx={{ width: { xs: '100%', sm: '50%', md: '33.33%' }, padding: 1.5 }}>
+              <Paper elevation={2} sx={{ height: '100%', borderRadius: 2, overflow: 'hidden' }}>
+                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', border: 'none', boxShadow: 'none' }}>
+                  <CardContent sx={{ flexGrow: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <InventoryIcon color="primary" sx={{ mr: 0.5 }} fontSize="small" />
+                      <Typography variant="subtitle1">Gestão de Produtos</Typography>
+                    </Box>
+                    <Typography variant="body2" color="text.secondary">
+                      Gerencie os produtos disponíveis para cada loja
+                    </Typography>
+                  </CardContent>
+                  <CardActions sx={{ pt: 0, borderTop: '1px solid', borderColor: 'divider' }}>
+                    <Button 
+                      size="small" 
+                      onClick={() => navigate('/gestao-produtos')}
+                    >
+                      Gerenciar produtos
+                    </Button>
+                  </CardActions>
+                </Card>
+              </Paper>
             </Box>
             
-            <Box sx={{ flex: '1 1 300px', maxWidth: '350px' }}>
-              <Card>
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <LinkIcon color="primary" sx={{ mr: 1 }} />
-                    <Typography variant="h6">Associar Produtos</Typography>
-                  </Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Associe produtos CVH às lojas para exibição no catálogo
-                  </Typography>
-                </CardContent>
-                <CardActions>
-                  <Button 
-                    size="small" 
-                    onClick={() => navigate('/produtos/associar-loja')}
-                  >
-                    Associar produtos
-                  </Button>
-                </CardActions>
-              </Card>
+            {/* Card de Associar Produtos */}
+            <Box sx={{ width: { xs: '100%', sm: '50%', md: '33.33%' }, padding: 1.5 }}>
+              <Paper elevation={2} sx={{ height: '100%', borderRadius: 2, overflow: 'hidden' }}>
+                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', border: 'none', boxShadow: 'none' }}>
+                  <CardContent sx={{ flexGrow: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <LinkIcon color="primary" sx={{ mr: 0.5 }} fontSize="small" />
+                      <Typography variant="subtitle1">Associar Produtos</Typography>
+                    </Box>
+                    <Typography variant="body2" color="text.secondary">
+                      Associe produtos CVH às lojas para exibição no catálogo
+                    </Typography>
+                  </CardContent>
+                  <CardActions sx={{ pt: 0, borderTop: '1px solid', borderColor: 'divider' }}>
+                    <Button 
+                      size="small" 
+                      onClick={() => navigate('/produtos/associar-loja')}
+                    >
+                      Associar produtos
+                    </Button>
+                  </CardActions>
+                </Card>
+              </Paper>
             </Box>
-          </Box>
+          </>
         )}
         
         {/* Card de Gestão de Produtos para usuários usuario_loja */}
         {user?.tipo === 'usuario_loja' && (
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, width: '100%', mt: 2 }}>
-            <Box sx={{ flex: '1 1 300px', maxWidth: '350px' }}>
-              <Card>
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <InventoryIcon color="primary" sx={{ mr: 1 }} />
-                    <Typography variant="h6">Gestão de Produtos</Typography>
-                  </Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Gerencie os produtos disponíveis para sua loja
-                  </Typography>
-                </CardContent>
-                <CardActions>
-                  <Button 
-                    size="small" 
-                    onClick={() => navigate('/produtos/gestao-loja')}
-                  >
-                    Gerenciar produtos
-                  </Button>
-                </CardActions>
-              </Card>
+          <>
+            <Box sx={{ width: { xs: '100%', sm: '50%', md: '33.33%' }, padding: 1.5 }}>
+              <Paper elevation={2} sx={{ height: '100%', borderRadius: 2, overflow: 'hidden' }}>
+                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', border: 'none', boxShadow: 'none' }}>
+                  <CardContent sx={{ flexGrow: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <InventoryIcon color="primary" sx={{ mr: 0.5 }} fontSize="small" />
+                      <Typography variant="subtitle1">Gestão de Produtos</Typography>
+                    </Box>
+                    <Typography variant="body2" color="text.secondary">
+                      Gerencie os produtos disponíveis para sua loja
+                    </Typography>
+                  </CardContent>
+                  <CardActions sx={{ pt: 0, borderTop: '1px solid', borderColor: 'divider' }}>
+                    <Button 
+                      size="small" 
+                      onClick={() => navigate('/gestao-produtos')}
+                    >
+                      Gerenciar produtos
+                    </Button>
+                  </CardActions>
+                </Card>
+              </Paper>
             </Box>
-          </Box>
+            
+            {/* Card de Estatísticas - Apenas para administrador de loja */}
+            <Box sx={{ width: { xs: '100%', sm: '50%', md: '33.33%' }, padding: 1.5 }}>
+              <Paper elevation={2} sx={{ height: '100%', borderRadius: 2, overflow: 'hidden' }}>
+                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', border: 'none', boxShadow: 'none' }}>
+                  <CardContent sx={{ flexGrow: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <PersonIcon color="primary" sx={{ mr: 0.5 }} fontSize="small" />
+                      <Typography variant="subtitle1">Usuários</Typography>
+                    </Box>
+                    <Typography variant="body2" color="text.secondary">
+                      Gerencie os usuários da sua loja
+                    </Typography>
+                  </CardContent>
+                  <CardActions sx={{ pt: 0, borderTop: '1px solid', borderColor: 'divider' }}>
+                    <Button 
+                      size="small" 
+                      onClick={() => navigate('/usuarios')}
+                    >
+                      Gerenciar usuários
+                    </Button>
+                  </CardActions>
+                </Card>
+              </Paper>
+            </Box>
+          </>
         )}
       </Box>
       
+      {/* Botão de Cadastrar Nova Loja */}
       <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end' }}>
         <Button
           variant="contained"
@@ -282,8 +294,8 @@ const Dashboard = () => {
           Cadastrar Nova Loja
         </Button>
       </Box>
-    </Box>
+    </MainLayout>
   );
 };
 
-export default Dashboard;
+export default DashboardNew;

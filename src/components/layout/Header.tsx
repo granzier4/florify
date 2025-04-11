@@ -24,23 +24,19 @@ import {
 import { 
   Menu as MenuIcon,
   Notifications as NotificationsIcon,
-  ArrowDropDown as ArrowDropDownIcon,
   Dashboard as DashboardIcon,
   Store as StoreIcon,
   Inventory as InventoryIcon,
   Settings as SettingsIcon,
   People as PeopleIcon,
-  ChevronRight as ChevronRightIcon,
   Close as CloseIcon
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 
-interface HeaderProps {
-  pageTitle?: string;
-}
+interface HeaderProps {}
 
-const Header: React.FC<HeaderProps> = ({ pageTitle }) => {
+const Header: React.FC<HeaderProps> = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -90,8 +86,16 @@ const Header: React.FC<HeaderProps> = ({ pageTitle }) => {
     return location.pathname.includes(path);
   };
   
+  // Definição do tipo de item de menu
+  interface MenuItem {
+    text: string;
+    icon: React.ReactNode;
+    path: string;
+    roles: string[];
+  }
+  
   // Definindo os itens de menu baseados no tipo de usuário
-  const menuItems = [
+  const menuItems: MenuItem[] = [
     { 
       text: 'Dashboard', 
       icon: <DashboardIcon fontSize="small" />, 
@@ -107,13 +111,13 @@ const Header: React.FC<HeaderProps> = ({ pageTitle }) => {
     { 
       text: 'Gestão de Produtos', 
       icon: <InventoryIcon fontSize="small" />, 
-      path: '/produtos/gestao-loja',
+      path: '/gestao-produtos',
       roles: ['master_plataforma']
     },
     { 
       text: 'Produtos', 
       icon: <InventoryIcon fontSize="small" />, 
-      path: '/produtos/gestao-loja',
+      path: '/gestao-produtos',
       roles: ['usuario_loja']
     },
     { 
@@ -157,180 +161,137 @@ const Header: React.FC<HeaderProps> = ({ pageTitle }) => {
       <List sx={{ pt: 1 }}>
         {menuItems
           .filter(item => item.roles.includes(user?.tipo || ''))
-          .map((item) => (
-            <ListItem key={item.text} disablePadding>
-              <ListItemButton 
-                onClick={() => navigate(item.path)}
-                selected={isActive(item.path)}
-                sx={{
-                  py: 1.25,
-                  '&.Mui-selected': {
-                    bgcolor: 'rgba(46, 125, 50, 0.08)',
-                    '&:hover': {
-                      bgcolor: 'rgba(46, 125, 50, 0.12)',
-                    }
-                  },
-                  '&:hover': {
-                    bgcolor: 'rgba(0, 0, 0, 0.04)',
-                  }
-                }}
-              >
-                <ListItemIcon sx={{ minWidth: 40, color: isActive(item.path) ? 'primary.main' : 'text.secondary' }}>
-                  {item.icon}
-                </ListItemIcon>
-                <ListItemText 
-                  primary={item.text} 
-                  primaryTypographyProps={{ 
-                    fontSize: '0.9rem',
-                    fontWeight: isActive(item.path) ? 500 : 400
+          .map((item, index) => (
+            <React.Fragment key={index}>
+              <ListItem disablePadding>
+                <ListItemButton 
+                  onClick={() => {
+                    navigate(item.path);
+                    setDrawerOpen(false);
                   }}
-                />
-                <ChevronRightIcon 
-                  fontSize="small" 
-                  sx={{ 
-                    opacity: 0.5,
-                    color: isActive(item.path) ? 'primary.main' : 'text.secondary'
-                  }} 
-                />
-              </ListItemButton>
-            </ListItem>
+                  selected={isActive(item.path)}
+                  sx={{
+                    py: 1.5,
+                    '&.Mui-selected': {
+                      bgcolor: 'rgba(0, 0, 0, 0.04)',
+                      '&:hover': {
+                        bgcolor: 'rgba(0, 0, 0, 0.08)'
+                      }
+                    }
+                  }}
+                >
+                  <ListItemIcon sx={{ minWidth: 40 }}>
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary={item.text} 
+                    primaryTypographyProps={{ 
+                      fontSize: '0.9rem',
+                      fontWeight: isActive(item.path) ? 500 : 400
+                    }}
+                  />
+                </ListItemButton>
+              </ListItem>
+            </React.Fragment>
           ))}
       </List>
-      
-      <Divider sx={{ my: 2 }} />
-      
-      <Box sx={{ p: 2 }}>
-        <Button 
-          variant="outlined" 
-          color="primary" 
-          fullWidth 
-          onClick={handleLogout}
-          sx={{ 
-            textTransform: 'none',
-            borderRadius: '8px',
-            py: 0.75
-          }}
-        >
-          Sair
-        </Button>
-      </Box>
     </Box>
   );
 
   return (
     <AppBar 
-      position="static" 
-      sx={{ width: '100%' }}
+      position="fixed" 
+      color="primary"
+      sx={{
+        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+        width: '100vw',
+        left: 0,
+        right: 0,
+        margin: 0,
+        padding: 0,
+        maxWidth: '100vw',
+        zIndex: (theme) => theme.zIndex.drawer + 1 // Garante que o header fique acima de outros elementos
+      }}
     >
-      <Container maxWidth={false} sx={{ width: '100%' }}>
-        <Toolbar sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between',
-          minHeight: { xs: '52px', md: '56px' },
-          py: { xs: 0.5, md: 0.75 },
-        }}>
-          {/* Logo e título */}
+      <Box sx={{ width: '100%', maxWidth: '100vw', bgcolor: 'primary.main', margin: 0, padding: 0 }}>
+        <Toolbar sx={{ px: 0, py: 1 }}>
+          <Container maxWidth={false} sx={{ px: 0, width: '100%', display: 'flex', justifyContent: 'space-between' }}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <IconButton
-              edge="start"
               color="inherit"
-              aria-label="menu"
+              aria-label="open drawer"
+              edge="start"
               onClick={toggleDrawer(true)}
-              sx={{ 
-                mr: 1.5,
-                '&:hover': { 
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)' 
-                },
-                transition: 'background-color 0.2s'
-              }}
+              sx={{ mr: 2, display: { sm: 'none' } }}
             >
-              <MenuIcon fontSize="small" />
+              <MenuIcon />
             </IconButton>
+            
             <Typography
-              variant="subtitle1"
+              variant="h6"
               component="div"
               sx={{ 
-                fontWeight: 600,
+                fontWeight: 600, 
+                fontSize: { xs: '1.1rem', sm: '1.25rem' },
                 letterSpacing: '-0.01em',
                 display: 'flex',
-                alignItems: 'center'
+                alignItems: 'center',
+                gap: 1
               }}
             >
               Florify
             </Typography>
           </Box>
 
-          {/* Título da página */}
-          {pageTitle && (
-            <Typography
-              variant="subtitle1"
-              component="div"
-              sx={{ 
-                display: { xs: 'none', md: 'block' },
-                fontWeight: 'medium'
-              }}
-            >
-              {pageTitle}
-            </Typography>
-          )}
-
-          {/* Ações do usuário */}
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', ml: 'auto' }}>
             {!isMobile && (
               <Tooltip title="Notificações">
                 <IconButton 
                   color="inherit" 
+                  size="small"
                   sx={{ 
                     mr: 1.5,
-                    '&:hover': { 
-                      backgroundColor: 'rgba(255, 255, 255, 0.1)' 
-                    },
-                    transition: 'background-color 0.2s'
+                    opacity: 0.8,
+                    '&:hover': { opacity: 1 }
                   }}
                 >
                   <NotificationsIcon fontSize="small" />
                 </IconButton>
               </Tooltip>
             )}
-
+            
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Typography 
-                variant="body2" 
-                sx={{ 
-                  mr: 1.5, 
-                  display: { xs: 'none', sm: 'block' },
-                  fontWeight: 500,
-                  opacity: 0.95
-                }}
-              >
-                {user?.nome || user?.email}
-              </Typography>
+              <Box sx={{ display: { xs: 'none', sm: 'block' }, mr: 1.5 }}>
+                <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: 1 }}>
+                  {user?.nome || 'Usuário'}
+                </Typography>
+                <Typography variant="caption" sx={{ opacity: 0.7, lineHeight: 1 }}>
+                  {user?.email || 'email@exemplo.com'}
+                </Typography>
+              </Box>
               
-              <Tooltip title="Configurações da conta">
+              <Tooltip title="Conta">
                 <IconButton
                   onClick={handleMenu}
                   color="inherit"
+                  size="small"
                   sx={{ 
-                    p: 0,
-                    '&:hover': { 
-                      backgroundColor: 'transparent' 
-                    }
+                    p: 0.5,
+                    border: '2px solid',
+                    borderColor: 'rgba(255, 255, 255, 0.2)'
                   }}
                 >
                   <Avatar 
-                    alt={user?.nome || 'Usuário'} 
-                    src="/static/images/avatar/1.jpg" 
                     sx={{ 
-                      width: { xs: 28, md: 32 }, 
-                      height: { xs: 28, md: 32 }, 
-                      bgcolor: 'secondary.main', 
-                      color: 'primary.main',
-                      boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                      width: 32, 
+                      height: 32,
+                      bgcolor: 'primary.dark',
+                      fontSize: '0.875rem',
+                      fontWeight: 500
                     }}
                   >
-                    {(user?.nome?.charAt(0) || user?.email?.charAt(0) || 'U').toUpperCase()}
+                    {user?.nome?.charAt(0) || 'U'}
                   </Avatar>
-                  <ArrowDropDownIcon sx={{ opacity: 0.9, display: { xs: 'none', sm: 'block' } }} />
                 </IconButton>
               </Tooltip>
               
@@ -372,42 +333,38 @@ const Header: React.FC<HeaderProps> = ({ pageTitle }) => {
               </Menu>
             </Box>
           </Box>
+          </Container>
         </Toolbar>
         
         {/* Barra de navegação secundária - visível apenas em desktop */}
         {!isMobile && (
-          <Box 
-            sx={{ 
-              bgcolor: 'rgba(0, 0, 0, 0.08)',
-              display: 'flex',
-              overflowX: 'auto',
-              borderTop: '1px solid rgba(255, 255, 255, 0.1)'
-            }}
-          >
-            {menuItems
-              .filter(item => item.roles.includes(user?.tipo || ''))
-              .map((item) => (
-                <Button 
-                  key={item.text}
-                  color="inherit"
-                  onClick={() => navigate(item.path)}
-                  sx={{ 
-                    py: 0.75,
-                    px: 2,
-                    opacity: isActive(item.path) ? 1 : 0.75,
-                    borderBottom: isActive(item.path) ? '2px solid white' : 'none',
-                    borderRadius: 0,
-                    fontSize: '0.875rem',
-                    letterSpacing: '-0.01em',
-                    transition: 'all 0.2s',
-                    '&:hover': { opacity: 1, bgcolor: 'rgba(255, 255, 255, 0.08)' },
-                    whiteSpace: 'nowrap'
-                  }}
-                >
-                  {item.text}
-                </Button>
-              ))
-            }
+          <Box sx={{ bgcolor: 'primary.dark', py: 0.5, width: '100%' }}>
+            <Container maxWidth={false} sx={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+              <Box sx={{ display: 'flex', gap: 3 }}>
+                {menuItems
+                  .filter(item => item.roles.includes(user?.tipo || ''))
+                  .map((item, index) => (
+                    <Button
+                      key={index}
+                      color="inherit"
+                      component={Link}
+                      to={item.path}
+                      sx={{ 
+                        color: 'white',
+                        textTransform: 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.5,
+                        fontSize: '0.9rem'
+                      }}
+                    >
+                      {item.icon}
+                      {item.text}
+                    </Button>
+                  ))
+                }
+              </Box>
+            </Container>
           </Box>
         )}
         
@@ -425,7 +382,7 @@ const Header: React.FC<HeaderProps> = ({ pageTitle }) => {
         >
           {drawerContent}
         </Drawer>
-      </Container>
+      </Box>
     </AppBar>
   );
 };

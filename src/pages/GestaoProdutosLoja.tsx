@@ -514,12 +514,8 @@ const GestaoProdutosLoja: React.FC = () => {
 
   return (
     <MainLayout pageTitle="Gestão de Produtos">
-      <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start' }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h5" component="h1" sx={{ fontWeight: 'medium', color: '#1976d2' }}>
-            Gestão de Produtos da Loja
-          </Typography>
-        </Box>
+      <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start', pt: 2 }}>
+
 
       {/* Verificar se o usuário tem permissão para acessar esta tela */}
       {(isMasterPlataforma || isUsuarioLoja) ? (

@@ -10,6 +10,7 @@ interface MainLayoutProps {
 
 const MainLayout: React.FC<MainLayoutProps> = ({ 
   children, 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   pageTitle
 }) => {
   return (
@@ -18,20 +19,25 @@ const MainLayout: React.FC<MainLayoutProps> = ({
       flexDirection: 'column', 
       minHeight: '100vh',
       width: '100%',
+      maxWidth: '100%',
+      overflow: 'hidden',
       bgcolor: 'background.default'
     }}>
-      <Header pageTitle={pageTitle} />
+      <Header />
       
       <Box 
         component="main" 
         sx={{ 
           flexGrow: 1, 
-          py: 3,
+          pt: 8, // Aumentado o padding top para dar mais espaço abaixo do header
+          pb: 3,
           px: 0,
-          width: '100%'
+          width: '100%',
+          maxWidth: '100%',
+          mt: { xs: '64px', sm: '70px' } // Adiciona margem superior para evitar sobreposição com o header
         }}
       >
-        <Container maxWidth={false} sx={{ width: '100%', px: { xs: 2, sm: 3 } }}>
+        <Container maxWidth={false} sx={{ width: '100%', maxWidth: '100%', paddingLeft: { xs: '24px !important', sm: '32px !important' }, paddingRight: { xs: '24px !important', sm: '32px !important' }, overflowX: 'hidden' }}>
           {children}
         </Container>
       </Box>
