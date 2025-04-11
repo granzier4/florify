@@ -203,8 +203,9 @@ const GerenciarUsuarios = () => {
     
     if (!formData.nome) errors.nome = 'Nome é obrigatório';
     
-    if (formData.tipo === 'usuario_loja' && !formData.loja_id && isMasterPlataforma) {
-      errors.loja_id = 'Loja é obrigatória para usuários do tipo Administrador de Loja';
+    // Verificar se é necessário selecionar uma loja para usuários do tipo administrador de loja e clientes
+    if ((formData.tipo === 'usuario_loja' || formData.tipo === 'cliente') && !formData.loja_id && isMasterPlataforma) {
+      errors.loja_id = 'Loja é obrigatória para usuários do tipo Administrador de Loja e Cliente';
     }
     
     setFormErrors(errors);
@@ -656,7 +657,8 @@ const GerenciarUsuarios = () => {
               </Select>
             </FormControl>
             
-            {formData.tipo === 'usuario_loja' && isMasterPlataforma && (
+            {/* Mostrar campo de seleção de loja para administradores de loja e clientes */}
+            {(formData.tipo === 'usuario_loja' || formData.tipo === 'cliente') && isMasterPlataforma && (
               <FormControl fullWidth error={!!formErrors.loja_id}>
                 <InputLabel>Loja</InputLabel>
                 <Select

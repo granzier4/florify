@@ -130,7 +130,7 @@ export const usuarioService = {
           nome: usuario.nome,
           telefone: usuario.telefone,
           tipo: usuario.tipo,
-          status: 'pendente', // Usuário começa como pendente até confirmar o email
+          status: 'ativo', // Usuário já começa como ativo
           loja_id: usuario.loja_id
         }]);
       
